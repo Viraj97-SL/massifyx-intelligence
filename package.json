@@ -12,6 +12,8 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "pg": "^8.22.0"
+  }
 }
