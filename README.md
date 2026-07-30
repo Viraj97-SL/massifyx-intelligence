@@ -13,8 +13,10 @@ site fetches from MIS server-side and degrades gracefully if MIS is down.
 
 ## Status
 
-Stage 2: GDELT ingestion + storage. No AI enrichment yet — events are
-persisted raw, keyed by GDELT's own event id.
+Stage 3: AI enrichment pipeline (relevance, classify, severity, summarise)
+behind a swappable Gemini-backed LLM client. No live key configured yet —
+enrichment is fully unit-tested against injected fakes; wiring a real
+`GEMINI_API_KEY` is a follow-up, not required for this stage.
 
 ## Setup
 
@@ -49,3 +51,24 @@ configured.
   same `upsertEvents` / `pruneOlderThan` / `listAll` contract.
 - `lib/scheduler.js` — start/stop-able poll loop wrapper around
   `setInterval`.
+- `lib/enrich/` — the AI pipeline: `category.js` (fixed enum validation),
+  `severity.js` (deterministic per-category floor), `clusterKey.js`
+  (deterministic stable `id` via geo/date bucketing — no embedding call
+  needed per ingest cycle), `pipeline.js` (`enrichEvent`, orchestrating
+  relevance → classify → severity → summarise; drops rather than
+  half-enriches on any failure).
+- `lib/llm/` — `geminiClient.js` (thin REST wrapper, no SDK dependency) and
+  `withResilience.js` (timeout + retry for every LLM call).
+- `lib/eval/runEval.js` + `scripts/run-eval.js` — precision/recall on
+  relevance and category accuracy against `test/fixtures/eval-sample.json`
+  (10 hand-labelled events). Reportable CI step, not a gate: skips cleanly
+  without a `GEMINI_API_KEY`.
+
+## Enrichment pipeline
+
+`enrichEvent(rawEvent, { llmCall })` takes an injected `llmCall(prompt) =>
+Promise<string>` so every caller — production (`geminiClient`) or tests — can
+swap the model out. Order: relevance filter (drop below threshold) → category
+classify (drop if outside the fixed enum) → severity score (AI proposal,
+floored per category) → one-sentence summary. Any unresolved failure after
+retries drops the event entirely; it's never emitted half-enriched.

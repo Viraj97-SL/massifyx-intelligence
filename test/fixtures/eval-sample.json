@@ -1,0 +1,122 @@
+[
+  {
+    "relevant": true,
+    "category": "labor",
+    "event": {
+      "actor1": "ROTTERDAM PORT AUTHORITY",
+      "actor2": "DOCKWORKERS UNION",
+      "location": "Rotterdam, Zuid-Holland, Netherlands",
+      "numMentions": 38,
+      "numSources": 12,
+      "sourceUrl": "https://example.com/rotterdam-strike"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "weather",
+    "event": {
+      "actor1": "US NATIONAL WEATHER SERVICE",
+      "actor2": "GULF COAST SHIPPING",
+      "location": "Houston, Texas, United States",
+      "numMentions": 44,
+      "numSources": 15,
+      "sourceUrl": "https://example.com/houston-hurricane-port-closure"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "geopolitical",
+    "event": {
+      "actor1": "RED SEA NAVAL FORCE",
+      "actor2": "CARGO SHIPPING LINE",
+      "location": "Bab-el-Mandeb Strait, Yemen",
+      "numMentions": 61,
+      "numSources": 22,
+      "sourceUrl": "https://example.com/red-sea-shipping-attacks"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "logistics",
+    "event": {
+      "actor1": "PANAMA CANAL AUTHORITY",
+      "actor2": "TRANSIT SHIPS",
+      "location": "Panama Canal, Panama",
+      "numMentions": 29,
+      "numSources": 9,
+      "sourceUrl": "https://example.com/panama-canal-drought-restrictions"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "regulatory",
+    "event": {
+      "actor1": "UNITED STATES GOVERNMENT",
+      "actor2": "SEMICONDUCTOR EXPORTERS",
+      "location": "Washington, D.C., United States",
+      "numMentions": 33,
+      "numSources": 11,
+      "sourceUrl": "https://example.com/chip-export-controls"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "supplier",
+    "event": {
+      "actor1": "TAIWAN SEMICONDUCTOR SUPPLIER",
+      "actor2": "AUTOMOTIVE MANUFACTURERS",
+      "location": "Hsinchu, Taiwan",
+      "numMentions": 27,
+      "numSources": 8,
+      "sourceUrl": "https://example.com/chip-supplier-fire-shutdown"
+    }
+  },
+  {
+    "relevant": false,
+    "category": null,
+    "event": {
+      "actor1": "LOCAL FILM FESTIVAL",
+      "actor2": "CELEBRITY GUESTS",
+      "location": "Cannes, France",
+      "numMentions": 18,
+      "numSources": 6,
+      "sourceUrl": "https://example.com/film-festival-red-carpet"
+    }
+  },
+  {
+    "relevant": false,
+    "category": null,
+    "event": {
+      "actor1": "LOCAL SPORTS TEAM",
+      "actor2": "RIVAL SPORTS TEAM",
+      "location": "Manchester, United Kingdom",
+      "numMentions": 51,
+      "numSources": 20,
+      "sourceUrl": "https://example.com/football-match-result"
+    }
+  },
+  {
+    "relevant": false,
+    "category": null,
+    "event": {
+      "actor1": "MUSEUM DIRECTOR",
+      "actor2": "ART COLLECTORS",
+      "location": "Florence, Italy",
+      "numMentions": 9,
+      "numSources": 3,
+      "sourceUrl": "https://example.com/museum-exhibit-opening"
+    }
+  },
+  {
+    "relevant": true,
+    "category": "labor",
+    "event": {
+      "actor1": "GERMAN RAIL WORKERS UNION",
+      "actor2": "DEUTSCHE BAHN",
+      "location": "Frankfurt, Hesse, Germany",
+      "numMentions": 40,
+      "numSources": 14,
+      "sourceUrl": "https://example.com/germany-rail-strike-freight"
+    }
+  }
+]
