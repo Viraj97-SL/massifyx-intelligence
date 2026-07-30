@@ -7,11 +7,14 @@ const { MemoryEventStore } = require('../lib/store/memoryEventStore');
 
 function sampleEvent(overrides = {}) {
   return {
-    gdeltId: '1001127001',
+    id: 'evt_0000000000000001',
+    category: 'labor',
+    severity: 4,
     location: 'Rotterdam, Zuid-Holland, Netherlands',
     lat: 51.9225,
     lon: 4.47917,
-    numMentions: 38,
+    sourceCount: 12,
+    rawRefs: ['1001127001'],
     ...overrides,
   };
 }
@@ -23,17 +26,26 @@ test('upsertEvents inserts a new event', async () => {
   assert.equal(upserted, 1);
   const all = await store.listAll();
   assert.equal(all.length, 1);
-  assert.equal(all[0].gdeltId, '1001127001');
+  assert.equal(all[0].id, 'evt_0000000000000001');
 });
 
 test('upsertEvents updates an existing event without duplicating it', async () => {
   const store = new MemoryEventStore();
-  await store.upsertEvents([sampleEvent({ numMentions: 38 })]);
-  await store.upsertEvents([sampleEvent({ numMentions: 52 })]);
+  await store.upsertEvents([sampleEvent({ sourceCount: 12 })]);
+  await store.upsertEvents([sampleEvent({ sourceCount: 20 })]);
 
   const all = await store.listAll();
   assert.equal(all.length, 1);
-  assert.equal(all[0].numMentions, 52);
+  assert.equal(all[0].sourceCount, 20);
+});
+
+test('upsertEvents unions rawRefs across upserts instead of overwriting them', async () => {
+  const store = new MemoryEventStore();
+  await store.upsertEvents([sampleEvent({ rawRefs: ['1001127001'] })]);
+  await store.upsertEvents([sampleEvent({ rawRefs: ['1001127001', '1001127009'] })]);
+
+  const [event] = await store.listAll();
+  assert.deepEqual(event.rawRefs.sort(), ['1001127001', '1001127009']);
 });
 
 test('upsertEvents preserves firstSeenAt across updates but bumps lastUpdatedAt', async () => {
@@ -42,7 +54,7 @@ test('upsertEvents preserves firstSeenAt across updates but bumps lastUpdatedAt'
   const [firstPass] = await store.listAll();
 
   await new Promise((resolve) => setTimeout(resolve, 5));
-  await store.upsertEvents([sampleEvent({ numMentions: 99 })]);
+  await store.upsertEvents([sampleEvent({ sourceCount: 99 })]);
   const [secondPass] = await store.listAll();
 
   assert.equal(secondPass.firstSeenAt.getTime(), firstPass.firstSeenAt.getTime());
@@ -51,24 +63,24 @@ test('upsertEvents preserves firstSeenAt across updates but bumps lastUpdatedAt'
 
 test('pruneOlderThan removes only events last updated before the cutoff', async () => {
   const store = new MemoryEventStore();
-  await store.upsertEvents([sampleEvent({ gdeltId: 'old-event' })]);
+  await store.upsertEvents([sampleEvent({ id: 'old-event' })]);
 
   await new Promise((resolve) => setTimeout(resolve, 5));
   const cutoff = new Date();
   await new Promise((resolve) => setTimeout(resolve, 5));
-  await store.upsertEvents([sampleEvent({ gdeltId: 'new-event' })]);
+  await store.upsertEvents([sampleEvent({ id: 'new-event' })]);
 
   const { pruned } = await store.pruneOlderThan(cutoff);
   assert.equal(pruned, 1);
 
   const remaining = await store.listAll();
   assert.equal(remaining.length, 1);
-  assert.equal(remaining[0].gdeltId, 'new-event');
+  assert.equal(remaining[0].id, 'new-event');
 });
 
 test('pruneOlderThan keeps events newer than the cutoff', async () => {
   const store = new MemoryEventStore();
-  await store.upsertEvents([sampleEvent({ gdeltId: 'keep-me' })]);
+  await store.upsertEvents([sampleEvent({ id: 'keep-me' })]);
 
   const pastCutoff = new Date(Date.now() - 60_000);
   const { pruned } = await store.pruneOlderThan(pastCutoff);
@@ -76,15 +88,15 @@ test('pruneOlderThan keeps events newer than the cutoff', async () => {
   assert.equal(pruned, 0);
   const remaining = await store.listAll();
   assert.equal(remaining.length, 1);
-  assert.equal(remaining[0].gdeltId, 'keep-me');
+  assert.equal(remaining[0].id, 'keep-me');
 });
 
 test('listAll returns events sorted by most recently updated first', async () => {
   const store = new MemoryEventStore();
-  await store.upsertEvents([sampleEvent({ gdeltId: 'first' })]);
+  await store.upsertEvents([sampleEvent({ id: 'first' })]);
   await new Promise((resolve) => setTimeout(resolve, 5));
-  await store.upsertEvents([sampleEvent({ gdeltId: 'second' })]);
+  await store.upsertEvents([sampleEvent({ id: 'second' })]);
 
   const all = await store.listAll();
-  assert.deepEqual(all.map((e) => e.gdeltId), ['second', 'first']);
+  assert.deepEqual(all.map((e) => e.id), ['second', 'first']);
 });
