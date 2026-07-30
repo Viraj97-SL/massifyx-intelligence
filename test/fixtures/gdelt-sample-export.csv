@@ -1,0 +1,4 @@
+1001127001	20260728					ROTTERDAM PORT AUTHORITY										DOCKWORKERS UNION										145				-4.5	38	12	20	-3.2																		Rotterdam, Zuid-Holland, Netherlands	NL			51.9225	4.47917		20260728120000	https://example.com/rotterdam-strike
+1001127002	20260728					SUEZ CANAL AUTHORITY										GOVERNMENT										190				-6.8	52	18	31	-5.1																		Suez, Al Suways, Egypt	EG			29.9668	32.5498		20260728123000	https://example.com/suez-disruption
+1001127003	20260728					UNKNOWN ACTOR																				010				0.0	2	1	1	0.0																									20260728124500	https://example.com/no-geo
+1001127004	20260728					PLACEHOLDER ACTOR																				010				0.0	1	1	1	0.0																		Null Island				0.0	0.0		20260728125000	https://example.com/null-island
