@@ -13,10 +13,12 @@ site fetches from MIS server-side and degrades gracefully if MIS is down.
 
 ## Status
 
-Stage 3: AI enrichment pipeline (relevance, classify, severity, summarise)
-behind a swappable Gemini-backed LLM client. No live key configured yet —
-enrichment is fully unit-tested against injected fakes; wiring a real
-`GEMINI_API_KEY` is a follow-up, not required for this stage.
+Stage 4: read API. `GET /api/v1/health` and `GET /api/v1/disruptions` are
+live, rate-limited, and cache-headered. `server.js` now runs both the poll
+loop and the HTTP API together. No live `GEMINI_API_KEY` configured yet —
+without one the poll loop still fetches raw GDELT events but skips
+enrichment entirely (nothing is stored, `eventCount` stays 0), matching the
+graceful-degradation the site will rely on in Stage 5.
 
 ## Setup
 
@@ -63,6 +65,17 @@ configured.
   relevance and category accuracy against `test/fixtures/eval-sample.json`
   (10 hand-labelled events). Reportable CI step, not a gate: skips cleanly
   without a `GEMINI_API_KEY`.
+- `lib/api/createApp.js` — the read API: `GET /api/v1/health`,
+  `GET /api/v1/disruptions` (filters: `severity`, `since`, `category`,
+  `limit` — default 100, max 500). Per-IP rate limiting
+  (`express-rate-limit`), `Cache-Control: public, max-age=60` on
+  disruptions / `no-store` on health, `helmet` + `compression`. Only the
+  public contract fields are ever serialized — `relevanceScore` and
+  `rawRefs` stay internal.
+- `lib/api/contractRules.js` — `assertValidDisruptionEvent()`, the shared
+  contract check (severity 1-5, fixed category enum, valid lat/lon, stable
+  `id`). Copy this and `test/fixtures/api-contract-sample.json` into the
+  site repo's own contract test so both sides fail loudly on drift.
 
 ## Enrichment pipeline
 

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "evt_a1b2c3d4e5f60001",
+    "title": "Port congestion reported at Rotterdam after storm.",
+    "summary": "Port congestion reported at Rotterdam after storm, delaying container throughput for regional carriers.",
+    "category": "weather",
+    "severity": 4,
+    "lat": 51.95,
+    "lon": 4.14,
+    "location": "Rotterdam, Zuid-Holland, Netherlands",
+    "sourceCount": 12,
+    "firstSeenAt": "2026-07-30T06:02:00.000Z",
+    "lastUpdatedAt": "2026-07-30T08:55:00.000Z",
+    "sourceUrl": "https://example.com/rotterdam-storm-port-congestion"
+  },
+  {
+    "id": "evt_a1b2c3d4e5f60002",
+    "title": "Suez Canal transit restricted following security incident.",
+    "summary": "Suez Canal transit was restricted following a security incident, affecting shippers routing through the corridor.",
+    "category": "geopolitical",
+    "severity": 5,
+    "lat": 29.9668,
+    "lon": 32.5498,
+    "location": "Suez, Al Suways, Egypt",
+    "sourceCount": 22,
+    "firstSeenAt": "2026-07-29T14:10:00.000Z",
+    "lastUpdatedAt": "2026-07-30T07:40:00.000Z",
+    "sourceUrl": "https://example.com/suez-canal-transit-restricted"
+  },
+  {
+    "id": "evt_a1b2c3d4e5f60003",
+    "title": "German rail workers begin strike affecting freight schedules.",
+    "summary": "German rail workers began a strike affecting freight schedules across Frankfurt-area logistics hubs.",
+    "category": "labor",
+    "severity": 3,
+    "lat": 50.1109,
+    "lon": 8.6821,
+    "location": "Frankfurt, Hesse, Germany",
+    "sourceCount": 14,
+    "firstSeenAt": "2026-07-30T05:00:00.000Z",
+    "lastUpdatedAt": "2026-07-30T09:05:00.000Z",
+    "sourceUrl": "https://example.com/germany-rail-strike-freight"
+  }
+]
