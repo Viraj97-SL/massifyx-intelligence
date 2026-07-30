@@ -1,0 +1,10 @@
+node_modules/
+.env
+npm-debug.log*
+.DS_Store
+
+# Local-only datastore artifacts (backups, dumps). The real datastore is
+# managed Postgres — nothing durable should live on this repo's disk.
+data/
+*.sqlite
+*.sqlite3

@@ -1,0 +1,17 @@
+{
+  "name": "massifyx-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MassifyX Intelligence Service (MIS) — supply chain disruption ingest, enrichment, and read API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
