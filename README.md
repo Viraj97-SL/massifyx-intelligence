@@ -13,12 +13,18 @@ site fetches from MIS server-side and degrades gracefully if MIS is down.
 
 ## Status
 
-Stage 4: read API. `GET /api/v1/health` and `GET /api/v1/disruptions` are
-live, rate-limited, and cache-headered. `server.js` now runs both the poll
-loop and the HTTP API together. No live `GEMINI_API_KEY` configured yet —
-without one the poll loop still fetches raw GDELT events but skips
-enrichment entirely (nothing is stored, `eventCount` stays 0), matching the
-graceful-degradation the site will rely on in Stage 5.
+Stages 1-6 of the build plan (see `docs/internal/BUILD_INSTRUCTIONS.md` in
+the site repo) are code-complete: ingest, AI enrichment, the read API, and
+now cost monitoring + a runbook (`RUNBOOK.md`). The site's `/live` page
+(Stage 5) consumes this service and is live on a feature branch of
+`MassifyX_Global`.
+
+**Not yet done:** MIS has never been deployed anywhere — it only runs
+locally so far, always with an in-memory store and no live `GEMINI_API_KEY`.
+Real deployment (hosting target, managed Postgres instance, a real Gemini
+key with its cost ceiling) needs the site owner's infrastructure decisions,
+not something to pick unilaterally. Once deployed, run `npm run eval`
+against `GEMINI_API_KEY` for a real precision/recall baseline.
 
 ## Setup
 
@@ -32,6 +38,13 @@ npm test
 export, keep only geolocated events, upsert them into the store, and prune
 anything older than 14 days. Without `DATABASE_URL` set, it falls back to an
 in-memory store for local dev (nothing persists across restarts).
+
+## Cost monitoring
+
+`lib/costMonitor.js` tracks estimated LLM spend against
+`LLM_MONTHLY_COST_CEILING_USD` (default $5) and logs a `[MIS] COST ALERT`
+when a poll cycle pushes the estimate over it. It's a rough tripwire, not
+real billing data — see `RUNBOOK.md` § "Cost spike" for what to do about it.
 
 ## Datastore
 

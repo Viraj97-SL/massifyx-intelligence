@@ -8,3 +8,8 @@ npm-debug.log*
 data/
 *.sqlite
 *.sqlite3
+
+# Ad-hoc local run artifacts (manual smoke checks, demo scripts).
+*.pid
+*.out.log
+*.err.log
