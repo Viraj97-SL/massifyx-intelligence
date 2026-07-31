@@ -14,10 +14,23 @@ site fetches from MIS server-side and degrades gracefully if MIS is down.
 ## Status
 
 Stages 1-6 of the build plan (see `docs/internal/BUILD_INSTRUCTIONS.md` in
-the site repo) are code-complete: ingest, AI enrichment, the read API, and
-now cost monitoring + a runbook (`RUNBOOK.md`). The site's `/live` page
-(Stage 5) consumes this service and is live on a feature branch of
-`MassifyX_Global`.
+the site repo) are code-complete: ingest, AI enrichment, the read API,
+cost monitoring + a runbook (`RUNBOOK.md`), and now optional live AIS
+vessel tracking. The site's `/live` page (Stage 5) consumes this service
+and is live on a feature branch of `MassifyX_Global`.
+
+### AIS vessel tracking (optional)
+
+`GET /api/v1/vessels` returns real-time ship positions from
+[aisstream.io](https://aisstream.io) (free tier available) when
+`AISSTREAM_API_KEY` is set. Without a key, the endpoint still responds --
+`available: false`, an empty list -- rather than 404/500, same
+graceful-degradation posture as the rest of this API. `lib/ais/` holds the
+WebSocket client (`aisStreamClient.js`, injectable `WebSocketImpl` so tests
+never open a real connection), reconnect-with-backoff wrapper
+(`reconnectingAisStream.js`), and the in-memory position store
+(`vesselStore.js` -- positions are ephemeral, never persisted, pruned after
+10 minutes of no update).
 
 **Not yet done:** MIS has never been deployed anywhere — it only runs
 locally so far, always with an in-memory store and no live `GEMINI_API_KEY`.
