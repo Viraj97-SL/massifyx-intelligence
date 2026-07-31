@@ -9,10 +9,13 @@ const { callGemini } = require('./lib/llm/geminiClient');
 const { withResilience } = require('./lib/llm/withResilience');
 const { createApp } = require('./lib/api/createApp');
 const { CostMonitor } = require('./lib/costMonitor');
+const { startAisStream } = require('./lib/ais/reconnectingAisStream');
+const { VesselStore } = require('./lib/ais/vesselStore');
 
 const RETENTION_DAYS = 14;
 const DEFAULT_POLL_MINUTES = 15;
 const DEFAULT_PORT = 3001;
+const VESSEL_PRUNE_INTERVAL_MS = 60_000;
 
 function createLlmCall(apiKey) {
   return (prompt) => withResilience(() => callGemini({ apiKey, prompt, fetchImpl: fetch }));
@@ -88,13 +91,32 @@ async function main() {
     `[MIS] polling GDELT every ${pollMinutes} minute(s)${llmCall ? '' : ' (enrichment disabled: no GEMINI_API_KEY)'}`,
   );
 
-  const app = createApp({ store, getHealthInfo: () => health });
+  // Optional: real-time AIS vessel positions (DESIGN.md's Phase B hint,
+  // pulled forward as a visual-only layer). Skipped entirely without a key
+  // -- /api/v1/vessels still responds, just with an empty, unavailable list,
+  // same graceful-degradation posture as everything else here.
+  let vesselStore;
+  let aisStream;
+  const aisApiKey = process.env.AISSTREAM_API_KEY;
+  if (aisApiKey) {
+    vesselStore = new VesselStore();
+    aisStream = startAisStream({
+      apiKey: aisApiKey,
+      onVessel: (vessel) => vesselStore.upsert(vessel),
+    });
+    setInterval(() => vesselStore.pruneStale(), VESSEL_PRUNE_INTERVAL_MS).unref();
+    console.log('[MIS] AIS vessel stream connecting...');
+  } else {
+    console.log('[MIS] AIS vessel tracking disabled (no AISSTREAM_API_KEY)');
+  }
+
+  const app = createApp({ store, getHealthInfo: () => health, vesselStore });
   const port = Number(process.env.PORT) || DEFAULT_PORT;
   app.listen(port, () => {
     console.log(`[MIS] read API listening on http://localhost:${port}`);
   });
 
-  return { store, poller, app };
+  return { store, poller, app, aisStream };
 }
 
 if (require.main === module) {
