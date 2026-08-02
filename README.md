@@ -34,10 +34,48 @@ never open a real connection), reconnect-with-backoff wrapper
 
 **Not yet done:** MIS has never been deployed anywhere — it only runs
 locally so far, always with an in-memory store and no live `GEMINI_API_KEY`.
-Real deployment (hosting target, managed Postgres instance, a real Gemini
-key with its cost ceiling) needs the site owner's infrastructure decisions,
-not something to pick unilaterally. Once deployed, run `npm run eval`
-against `GEMINI_API_KEY` for a real precision/recall baseline.
+Once deployed, run `npm run eval` against `GEMINI_API_KEY` for a real
+precision/recall baseline. See **Deployment & handover** below for the
+actual options and what each one costs/needs.
+
+## Deployment & handover
+
+This service is entirely optional from the site's point of view: if
+`MIS_BASE_URL` is unset on the `MassifyX_Global` site, `/live` just shows a
+"temporarily unavailable" panel and every other page is unaffected. MIS
+only needs to exist at all if live disruption data on `/live` matters yet.
+Three real ways to handle that:
+
+1. **Don't deploy it yet.** Ship the site as-is; `/live` degrades
+   gracefully. Revisit once there's a real reason (a demo, a client ask)
+   to show live data. Zero cost, zero new access for anyone.
+2. **One person hosts it, the other only gets a URL.** Whoever deploys
+   this repo needs the API keys below and picks a host; the site owner
+   then needs exactly **one** value — `MIS_BASE_URL=https://wherever-this-
+   ended-up`, set as an env var on the site's host. No repo access, no API
+   keys, no separate deploy on their side.
+3. **Both sides run their own piece.** The site owner also takes over
+   running MIS — needs collaborator access (or a fork) of this repo, their
+   own API keys below, and their own hosting decision. More ongoing
+   ownership on their end, but no single point of failure.
+
+(1) or (2) is the lower-friction starting point; (3) only makes sense if
+whoever's handling the site wants to own this service long-term too.
+
+**What deploying it for real needs (whichever option above):**
+
+| Item | Required? | Notes |
+| --- | --- | --- |
+| A host that runs Node | Yes | Render, Railway, Fly.io, a VPS — anything that can run `npm start` and holds env vars. No build step. |
+| `DATABASE_URL` | Recommended | Managed Postgres (Supabase or Neon both have a free tier). Without it, MIS runs on an in-memory store — fine for testing, but every restart loses all ingested/enriched events. |
+| `GEMINI_API_KEY` | Required for enrichment | Free tier at [Google AI Studio](https://aistudio.google.com). Without it, raw events still get ingested but nothing gets enriched (relevance/category/severity/summary all skipped) — `/api/v1/disruptions` would just stay empty. |
+| `LLM_MONTHLY_COST_CEILING_USD` | Optional | Defaults to $5. A soft tripwire (logs `[MIS] COST ALERT`), not a hard cutoff — see `RUNBOOK.md` "Cost spike". |
+| `AISSTREAM_API_KEY` | Optional | Free tier at [aisstream.io](https://aisstream.io). Only enables live ship positions on `/api/v1/vessels` — everything else works without it. |
+
+Nothing here is secret-shared between the two repos: `MassifyX_Global`
+never sees any of MIS's keys, and MIS never sees any of the site's
+(`ADMIN_PASSWORD`, `SESSION_SECRET`). The only thing that crosses the
+boundary is `MIS_BASE_URL`, a plain public URL.
 
 ## Setup
 
