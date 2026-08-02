@@ -1,151 +1,246 @@
 # MassifyX Intelligence Service (MIS)
 
-Decoupled microservice powering the MassifyX site's `/live` supply chain
-disruption monitor. See the sibling `MassifyX_Global` repo's
-`docs/internal/DESIGN.md` for the full technical design and
-`docs/internal/BUILD_INSTRUCTIONS.md` for the staged build plan this repo
-follows.
+**A decoupled AI microservice that turns the raw GDELT global-events feed into a
+rate-limited, contract-tested API of classified, scored supply-chain
+disruptions — with a live AIS ship-tracking layer, a cost-monitored LLM
+enrichment pipeline, and zero runtime dependency on anything that can take
+the consuming site down with it.**
 
-MIS ingests GDELT events, filters and enriches them with an AI pipeline
-(relevance, classification, clustering, severity, summarisation), and exposes
-a read-only, rate-limited JSON API. It never talks back to the site — the
-site fetches from MIS server-side and degrades gracefully if MIS is down.
+🔗 **Live**: https://massifyx-intelligence-production.up.railway.app/api/v1/health
+Powers the `/live` disruption monitor on [MassifyX Global](https://github.com/Viraj97-SL/MassifyX_Global)
+(see it in context on that site's `/live` and `/insights/sweden-trade` pages).
 
-## Status
+```bash
+curl https://massifyx-intelligence-production.up.railway.app/api/v1/disruptions
+```
 
-Stages 1-6 of the build plan (see `docs/internal/BUILD_INSTRUCTIONS.md` in
-the site repo) are code-complete: ingest, AI enrichment, the read API,
-cost monitoring + a runbook (`RUNBOOK.md`), and now optional live AIS
-vessel tracking. The site's `/live` page (Stage 5) consumes this service
-and is live on a feature branch of `MassifyX_Global`.
+---
 
-### AIS vessel tracking (optional)
+## What this is
 
-`GET /api/v1/vessels` returns real-time ship positions from
-[aisstream.io](https://aisstream.io) (free tier available) when
-`AISSTREAM_API_KEY` is set. Without a key, the endpoint still responds --
-`available: false`, an empty list -- rather than 404/500, same
-graceful-degradation posture as the rest of this API. `lib/ais/` holds the
-WebSocket client (`aisStreamClient.js`, injectable `WebSocketImpl` so tests
-never open a real connection), reconnect-with-backoff wrapper
-(`reconnectingAisStream.js`), and the in-memory position store
-(`vesselStore.js` -- positions are ephemeral, never persisted, pruned after
-10 minutes of no update).
+A supply-chain buyer cares about port strikes, storms, and geopolitical
+restrictions the moment they happen — but the raw source for that (GDELT,
+a firehose of ~150k+ global news-derived events a day, in a 61-column
+tab-separated export) is noise, not signal. This service is the pipeline
+that turns that firehose into something a product can actually render:
 
-**Not yet done:** MIS has never been deployed anywhere — it only runs
-locally so far, always with an in-memory store and no live `GEMINI_API_KEY`.
-Once deployed, run `npm run eval` against `GEMINI_API_KEY` for a real
-precision/recall baseline. See **Deployment & handover** below for the
-actual options and what each one costs/needs.
+```
+GDELT export (raw, noisy, 61 cols)
+        │  parse + geofilter
+        ▼
+raw candidate events
+        │  AI enrichment: relevance → category → severity → summary
+        ▼
+classified, scored, deduplicated disruptions
+        │  read-only, rate-limited, cache-headered API
+        ▼
+consuming site (renders a map + feed, degrades gracefully if this is down)
+```
 
-## Deployment & handover
+Built as an independent, separately-deployed microservice on purpose (see
+**Why decoupled** below) — the site that consumes it has *zero* runtime
+dependency on GDELT, on an LLM, or on this service being up at all.
 
-This service is entirely optional from the site's point of view: if
-`MIS_BASE_URL` is unset on the `MassifyX_Global` site, `/live` just shows a
-"temporarily unavailable" panel and every other page is unaffected. MIS
-only needs to exist at all if live disruption data on `/live` matters yet.
-Three real ways to handle that:
+## Skills & technical areas this project demonstrates
 
-1. **Don't deploy it yet.** Ship the site as-is; `/live` degrades
-   gracefully. Revisit once there's a real reason (a demo, a client ask)
-   to show live data. Zero cost, zero new access for anyone.
-2. **One person hosts it, the other only gets a URL.** Whoever deploys
-   this repo needs the API keys below and picks a host; the site owner
-   then needs exactly **one** value — `MIS_BASE_URL=https://wherever-this-
-   ended-up`, set as an env var on the site's host. No repo access, no API
-   keys, no separate deploy on their side.
-3. **Both sides run their own piece.** The site owner also takes over
-   running MIS — needs collaborator access (or a fork) of this repo, their
-   own API keys below, and their own hosting decision. More ongoing
-   ownership on their end, but no single point of failure.
+- **System design** — decoupled service boundary by design, not by accident:
+  a stateless, always-up marketing site and a stateful, dependency-heavy
+  data service are two different failure domains, so they're two different
+  deployments. The site fetches this service's read API server-side and
+  degrades to a clean "unavailable" state if it's slow, down, or
+  misconfigured — see **Why decoupled**.
+- **AI/LLM integration** — Google Gemini via a hand-rolled REST client (no
+  SDK dependency), an injectable `llmCall` interface so the entire
+  enrichment pipeline is unit-testable without a network call or a real key,
+  timeout + retry resilience on every call, and a cost tripwire
+  (`lib/costMonitor.js`) rather than an unmonitored blank cheque.
+- **Data engineering / ETL** — a real ingest pipeline: fetch → parse a
+  domain-specific flat-file format → geofilter → deterministic clustering
+  (geo/date bucketing for a stable dedup key, no embedding call needed per
+  cycle) → enrich → persist. Idempotent, retryable, and tested against
+  recorded fixtures rather than the live network.
+- **API design** — a small, deliberate read contract (`GET /api/v1/health`,
+  `GET /api/v1/disruptions`, `GET /api/v1/vessels`), per-IP rate limiting,
+  correct cache headers per endpoint, and a **shared contract test**
+  (`lib/api/contractRules.js`) duplicated into the consuming site's own test
+  suite so the two repos fail loudly on drift instead of silently
+  diverging.
+- **Real-time systems** — a WebSocket client for live AIS ship-position
+  streaming (`aisstream.io`), with reconnect-with-backoff and an in-memory
+  store that prunes stale positions itself (10 min) rather than growing
+  unbounded.
+- **Testing discipline** — 87 tests (`node:test`, no external test runner),
+  every network/filesystem/time boundary is dependency-injected
+  (`fetchImpl`, `unzipImpl`, `WebSocketImpl`, `llmCall`) specifically so the
+  suite runs deterministically with zero real network calls. A separate,
+  non-gating **eval harness** reports precision/recall on relevance and
+  category classification against a hand-labelled fixture set — the kind of
+  AI-quality signal that a pass/fail unit test can't give you.
+- **Cloud deployment & ops** — deployed on Railway (Nixpacks auto-build, no
+  Dockerfile needed), managed Postgres on Supabase accessed through its
+  connection pooler (the direct hostname is IPv6-only and unreachable from
+  Railway's network — diagnosed via DNS resolution, fixed by routing through
+  Supavisor), CI on GitHub Actions across Node 18/20/22, a written
+  operational runbook (`RUNBOOK.md`) for on-call-style triage.
+- **Security-conscious defaults** — `helmet` CSP/security headers,
+  per-IP rate limiting, only public contract fields ever serialized
+  (internal fields like `relevanceScore` and raw source refs never leave
+  this service), no secret ever crosses the boundary to the site — the only
+  thing the two services share is a plain public URL.
 
-(1) or (2) is the lower-friction starting point; (3) only makes sense if
-whoever's handling the site wants to own this service long-term too.
+## Tech stack
 
-**What deploying it for real needs (whichever option above):**
-
-| Item | Required? | Notes |
+| Layer | Choice | Why |
 | --- | --- | --- |
-| A host that runs Node | Yes | Render, Railway, Fly.io, a VPS — anything that can run `npm start` and holds env vars. No build step. |
-| `DATABASE_URL` | Recommended | Managed Postgres (Supabase or Neon both have a free tier). Without it, MIS runs on an in-memory store — fine for testing, but every restart loses all ingested/enriched events. |
-| `GEMINI_API_KEY` | Required for enrichment | Free tier at [Google AI Studio](https://aistudio.google.com). Without it, raw events still get ingested but nothing gets enriched (relevance/category/severity/summary all skipped) — `/api/v1/disruptions` would just stay empty. |
-| `LLM_MONTHLY_COST_CEILING_USD` | Optional | Defaults to $5. A soft tripwire (logs `[MIS] COST ALERT`), not a hard cutoff — see `RUNBOOK.md` "Cost spike". |
-| `AISSTREAM_API_KEY` | Optional | Free tier at [aisstream.io](https://aisstream.io). Only enables live ship positions on `/api/v1/vessels` — everything else works without it. |
+| Runtime | Node.js ≥20, plain CommonJS | No build step, no framework lock-in, matches the consuming site's own "no build step" philosophy |
+| Web framework | Express 5 | Small read-only API surface; didn't need more |
+| Database | PostgreSQL (Supabase, managed), accessed via `pg` | Hosts here (Railway) can have ephemeral filesystems — no local disk persistence, ever |
+| AI / LLM | Google Gemini (`gemini-flash-latest`), raw REST — no SDK | Full control over retry/timeout/cost behaviour; one fewer opaque dependency |
+| Real-time data | `ws` (WebSocket client) → aisstream.io | Free-tier live AIS ship positions, entirely optional/gracefully-absent without a key |
+| Source data | GDELT 2.0 Event Export (public, key-free) | The actual global-events firehose this service tames |
+| Security | `helmet`, `express-rate-limit`, `compression` | Standard hardening for a public read API |
+| Testing | `node:test` (built-in), zero external test framework | 87 tests, all fixture-based, zero live network calls |
+| CI | GitHub Actions, Node 18/20/22 matrix | Tests gate the build; the AI eval reports but doesn't gate (LLM output isn't binary pass/fail) |
+| Hosting | Railway | Auto-detected Node build (Nixpacks), env-var config, zero Dockerfile |
+| Database hosting | Supabase | Managed Postgres, free tier, accessed through its Supavisor pooler for IPv4 reachability |
 
-Nothing here is secret-shared between the two repos: `MassifyX_Global`
-never sees any of MIS's keys, and MIS never sees any of the site's
-(`ADMIN_PASSWORD`, `SESSION_SECRET`). The only thing that crosses the
-boundary is `MIS_BASE_URL`, a plain public URL.
+## Why decoupled
 
-## Setup
+The site this feeds is a stateless, must-never-go-down marketing site. This
+service is the opposite: it holds state (Postgres), makes outbound calls to
+three different third parties (GDELT, Gemini, aisstream.io), and does
+real background work on a poll loop. Coupling those into one deployment
+means a GDELT format change, an LLM outage, or a memory leak in the poll
+loop can take the marketing site down with it. Splitting them means:
+
+- The site never calls GDELT, Gemini, or aisstream.io directly — it calls
+  *this service's* read API, server-side, and treats "down/slow/empty" as
+  one normal, handled state (`/live` always returns `200`, degrading to a
+  clean "temporarily unavailable" panel).
+- This service can be redeployed, restarted, or even taken offline entirely
+  without the site's uptime being affected at all.
+- Each side scales, fails, and gets debugged independently.
+
+## Architecture
 
 ```
-npm install
-cp .env.example .env
-npm test
+lib/gdelt/       parse (tab-separated, 61-col GDELT format) + ingest (fetch
+                 lastupdate.txt + export zip; fetchImpl/unzipImpl injected
+                 so tests never touch the network) + unzip (adm-zip, real
+                 impl only used by server.js)
+lib/enrich/      the AI pipeline — category.js (fixed enum validation),
+                 severity.js (deterministic per-category floor over the AI's
+                 proposal), clusterKey.js (deterministic stable id via
+                 geo/date bucketing), pipeline.js (enrichEvent: relevance →
+                 classify → severity → summarise; drops rather than
+                 half-enriches on any failure)
+lib/llm/         geminiClient.js (thin REST wrapper, no SDK) +
+                 withResilience.js (timeout + retry wrapper for every call)
+lib/store/       repository-pattern event store — MemoryEventStore (tests +
+                 local-dev fallback) and PostgresEventStore (production)
+                 implement the same upsertEvents/pruneOlderThan/listAll
+                 contract, swappable with zero call-site changes
+lib/ais/         aisStreamClient.js (WebSocket client, injectable
+                 WebSocketImpl) + reconnectingAisStream.js (backoff wrapper)
+                 + vesselStore.js (in-memory, self-pruning after 10 min)
+lib/api/         createApp.js (the read API itself) + contractRules.js
+                 (assertValidDisruptionEvent — the shared contract, copied
+                 into the consuming site's own test suite so both repos
+                 fail loudly on drift)
+lib/costMonitor.js   tracks estimated LLM spend against a configurable
+                      ceiling, logs an alert rather than hard-cutting
+lib/scheduler.js     start/stop-able poll loop wrapper
+lib/eval/ + scripts/run-eval.js   precision/recall eval harness against a
+                                  hand-labelled fixture set (reportable CI
+                                  step, not a gate — skips cleanly without
+                                  a live key)
+db/schema.sql        Postgres schema, applied automatically and
+                      idempotently (CREATE TABLE IF NOT EXISTS) on every boot
 ```
 
-`npm start` / `npm run dev` boot the poll loop: fetch the latest GDELT event
-export, keep only geolocated events, upsert them into the store, and prune
-anything older than 14 days. Without `DATABASE_URL` set, it falls back to an
-in-memory store for local dev (nothing persists across restarts).
+## API
+
+All endpoints are `GET`, read-only, rate-limited per IP, and CORS-agnostic
+by design — this API is meant to be called server-side by a consumer, never
+directly from a browser, so no key or token is required or checked.
+
+| Endpoint | Returns |
+| --- | --- |
+| `GET /api/v1/health` | `{ status, lastIngestAt, eventCount }` |
+| `GET /api/v1/disruptions` | Classified events. Filters: `severity`, `since`, `category`, `limit` (default 100, max 500) |
+| `GET /api/v1/vessels` | Live AIS ship positions if `AISSTREAM_API_KEY` is configured; otherwise `{ available: false, vessels: [] }` — never a 404/500 |
+
+Every disruption event satisfies a fixed contract (`lib/api/contractRules.js`):
+severity is an integer 1–5, category is one of a fixed enum, `lat`/`lon` are
+always present and finite, `id` is a stable string. Internal-only fields
+(`relevanceScore`, raw source refs) are never serialized.
+
+## Enrichment pipeline
+
+`enrichEvent(rawEvent, { llmCall })` — the `llmCall` dependency is injected,
+so production wires in `geminiClient`, tests wire in a fake, and neither
+touches the other. Order: **relevance filter** (drop below threshold) →
+**category classify** (drop if outside the fixed enum) → **severity score**
+(AI proposal, floored per category so a human-reviewable minimum always
+holds) → **one-sentence summary**. Any unresolved failure after retries
+drops the event entirely — it is never emitted half-enriched.
 
 ## Cost monitoring
 
 `lib/costMonitor.js` tracks estimated LLM spend against
-`LLM_MONTHLY_COST_CEILING_USD` (default $5) and logs a `[MIS] COST ALERT`
-when a poll cycle pushes the estimate over it. It's a rough tripwire, not
-real billing data — see `RUNBOOK.md` § "Cost spike" for what to do about it.
+`LLM_MONTHLY_COST_CEILING_USD` (default $5) and logs `[MIS] COST ALERT`
+when a poll cycle pushes the running estimate over it. A soft tripwire, not
+a hard cutoff — see `RUNBOOK.md` § "Cost spike" for the actual response
+playbook.
 
-## Datastore
+## Testing
 
-Managed Postgres (e.g. Supabase or Neon) via `DATABASE_URL`. No local disk
-persistence — hosts here may have an ephemeral filesystem. Schema lives in
-`db/schema.sql` and is applied automatically on startup when Postgres is
-configured.
+```bash
+npm test        # 87 tests, node:test, zero live network calls
+npm run eval     # precision/recall against a hand-labelled fixture set
+                 # (skips cleanly without GEMINI_API_KEY; reportable, not a gate)
+```
 
-## Architecture
+Every external boundary — GDELT's HTTP fetch, the unzip step, Gemini's
+REST call, the AIS WebSocket, wall-clock time — is dependency-injected, so
+the full suite runs deterministically offline. CI runs the suite across
+Node 18/20/22 on every push/PR.
 
-- `lib/gdelt/parseEvents.js` — pure parser for the GDELT 2.0 Event export
-  format (tab-separated, 61 columns); drops events without valid lat/lon.
-- `lib/gdelt/ingest.js` — orchestrates fetching `lastupdate.txt` + the export
-  zip; `fetchImpl`/`unzipImpl` are injected so tests never touch the network.
-- `lib/gdelt/unzip.js` — the real unzip implementation (`adm-zip`), used only
-  by `server.js`, never by tests.
-- `lib/store/` — repository-pattern event store: `MemoryEventStore` (tests +
-  local-dev fallback) and `PostgresEventStore` (production) implement the
-  same `upsertEvents` / `pruneOlderThan` / `listAll` contract.
-- `lib/scheduler.js` — start/stop-able poll loop wrapper around
-  `setInterval`.
-- `lib/enrich/` — the AI pipeline: `category.js` (fixed enum validation),
-  `severity.js` (deterministic per-category floor), `clusterKey.js`
-  (deterministic stable `id` via geo/date bucketing — no embedding call
-  needed per ingest cycle), `pipeline.js` (`enrichEvent`, orchestrating
-  relevance → classify → severity → summarise; drops rather than
-  half-enriches on any failure).
-- `lib/llm/` — `geminiClient.js` (thin REST wrapper, no SDK dependency) and
-  `withResilience.js` (timeout + retry for every LLM call).
-- `lib/eval/runEval.js` + `scripts/run-eval.js` — precision/recall on
-  relevance and category accuracy against `test/fixtures/eval-sample.json`
-  (10 hand-labelled events). Reportable CI step, not a gate: skips cleanly
-  without a `GEMINI_API_KEY`.
-- `lib/api/createApp.js` — the read API: `GET /api/v1/health`,
-  `GET /api/v1/disruptions` (filters: `severity`, `since`, `category`,
-  `limit` — default 100, max 500). Per-IP rate limiting
-  (`express-rate-limit`), `Cache-Control: public, max-age=60` on
-  disruptions / `no-store` on health, `helmet` + `compression`. Only the
-  public contract fields are ever serialized — `relevanceScore` and
-  `rawRefs` stay internal.
-- `lib/api/contractRules.js` — `assertValidDisruptionEvent()`, the shared
-  contract check (severity 1-5, fixed category enum, valid lat/lon, stable
-  `id`). Copy this and `test/fixtures/api-contract-sample.json` into the
-  site repo's own contract test so both sides fail loudly on drift.
+## Deployment
 
-## Enrichment pipeline
+Live on **Railway** (auto-detected Node build via Nixpacks — no Dockerfile
+in this repo), backed by **Supabase** Postgres. One real deployment gotcha
+worth noting: Supabase's *direct* database hostname resolved IPv6-only,
+which Railway's network can't route to (`ENETUNREACH`) — fixed by
+connecting through Supabase's Supavisor connection pooler instead, which is
+IPv4-reachable. Diagnosed via a plain DNS lookup (`no A record, AAAA-only`),
+not a guess.
 
-`enrichEvent(rawEvent, { llmCall })` takes an injected `llmCall(prompt) =>
-Promise<string>` so every caller — production (`geminiClient`) or tests — can
-swap the model out. Order: relevance filter (drop below threshold) → category
-classify (drop if outside the fixed enum) → severity score (AI proposal,
-floored per category) → one-sentence summary. Any unresolved failure after
-retries drops the event entirely; it's never emitted half-enriched.
+**Environment variables:**
+
+| Variable | Required? | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | Recommended | Managed Postgres. Without it, MIS runs on an in-memory store — fine for local dev, but every restart loses all data. |
+| `GEMINI_API_KEY` | Required for enrichment | Free tier at [Google AI Studio](https://aistudio.google.com). Without it, raw events ingest but nothing gets enriched. |
+| `LLM_MONTHLY_COST_CEILING_USD` | Optional | Defaults to $5. |
+| `AISSTREAM_API_KEY` | Optional | Free tier at [aisstream.io](https://aisstream.io). Only gates live ship positions. |
+| `GDELT_POLL_INTERVAL_MINUTES` | Optional | Defaults set in code (15 min). |
+| `PORT` | Optional | Defaults to 3000. |
+
+Nothing here is ever shared with the consuming site, and the site's own
+secrets (`ADMIN_PASSWORD`, `SESSION_SECRET`) are never seen by this
+service. The only thing that crosses the boundary is `MIS_BASE_URL` — a
+plain public URL, set as one env var on the site's host.
+
+## Local setup
+
+```bash
+npm install
+cp .env.example .env    # fill in DATABASE_URL / GEMINI_API_KEY as needed
+npm test
+npm run dev              # node --watch, boots the poll loop + read API
+```
+
+Runs fine with nothing configured — falls back to an in-memory store and
+skips enrichment gracefully — right up to needing real keys/DB for
+anything to actually get ingested and enriched.
