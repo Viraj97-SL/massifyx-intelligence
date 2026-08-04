@@ -5,7 +5,7 @@ const { unzipToText } = require('./lib/gdelt/unzip');
 const { createEventStore } = require('./lib/store');
 const { createPoller } = require('./lib/scheduler');
 const { enrichEvent } = require('./lib/enrich/pipeline');
-const { callGemini } = require('./lib/llm/geminiClient');
+const { callDeepSeek } = require('./lib/llm/deepseekClient');
 const { withResilience } = require('./lib/llm/withResilience');
 const { createApp } = require('./lib/api/createApp');
 const { CostMonitor } = require('./lib/costMonitor');
@@ -13,12 +13,12 @@ const { startAisStream } = require('./lib/ais/reconnectingAisStream');
 const { VesselStore } = require('./lib/ais/vesselStore');
 
 const RETENTION_DAYS = 14;
-const DEFAULT_POLL_MINUTES = 15;
+const DEFAULT_POLL_MINUTES = 60;
 const DEFAULT_PORT = 3001;
 const VESSEL_PRUNE_INTERVAL_MS = 60_000;
 
 function createLlmCall(apiKey) {
-  return (prompt) => withResilience(() => callGemini({ apiKey, prompt, fetchImpl: fetch }));
+  return (prompt) => withResilience(() => callDeepSeek({ apiKey, prompt, fetchImpl: fetch }));
 }
 
 // Wraps llmCall to count every actual call made during a cycle, without the
@@ -38,7 +38,7 @@ async function pollOnce(store, { llmCall, fetchImpl = fetch, unzipImpl = unzipTo
 
   if (!llmCall) {
     console.warn(
-      `[MIS] ingest cycle: fetched ${rawEvents.length} raw events but skipped enrichment (no GEMINI_API_KEY)`,
+      `[MIS] ingest cycle: fetched ${rawEvents.length} raw events but skipped enrichment (no DEEPSEEK_API_KEY)`,
     );
     return { fetched: rawEvents.length, upserted: 0, pruned: 0 };
   }
@@ -56,7 +56,7 @@ async function pollOnce(store, { llmCall, fetchImpl = fetch, unzipImpl = unzipTo
     const spend = costMonitor.recordCalls(counter.count);
     if (costMonitor.isOverCeiling()) {
       console.error(
-        `[MIS] COST ALERT: estimated spend this month is $${spend.toFixed(2)}, over the $${costMonitor.ceilingUsd} ceiling. Check GEMINI_API_KEY usage / GDELT poll frequency.`,
+        `[MIS] COST ALERT: estimated spend this month is $${spend.toFixed(2)}, over the $${costMonitor.ceilingUsd} ceiling. Check DEEPSEEK_API_KEY usage / GDELT poll frequency.`,
       );
     }
   }
@@ -76,7 +76,7 @@ async function main() {
     await store.migrate();
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.DEEPSEEK_API_KEY;
   const llmCall = apiKey ? createLlmCall(apiKey) : null;
   const costMonitor = new CostMonitor();
 
@@ -88,7 +88,7 @@ async function main() {
   }, pollMinutes * 60 * 1000);
   poller.start();
   console.log(
-    `[MIS] polling GDELT every ${pollMinutes} minute(s)${llmCall ? '' : ' (enrichment disabled: no GEMINI_API_KEY)'}`,
+    `[MIS] polling GDELT every ${pollMinutes} minute(s)${llmCall ? '' : ' (enrichment disabled: no DEEPSEEK_API_KEY)'}`,
   );
 
   // Optional: real-time AIS vessel positions (DESIGN.md's Phase B hint,

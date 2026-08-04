@@ -49,7 +49,7 @@ dependency on GDELT, on an LLM, or on this service being up at all.
   deployments. The site fetches this service's read API server-side and
   degrades to a clean "unavailable" state if it's slow, down, or
   misconfigured — see **Why decoupled**.
-- **AI/LLM integration** — Google Gemini via a hand-rolled REST client (no
+- **AI/LLM integration** — DeepSeek via a hand-rolled REST client (no
   SDK dependency), an injectable `llmCall` interface so the entire
   enrichment pipeline is unit-testable without a network call or a real key,
   timeout + retry resilience on every call, and a cost tripwire
@@ -95,7 +95,7 @@ dependency on GDELT, on an LLM, or on this service being up at all.
 | Runtime | Node.js ≥20, plain CommonJS | No build step, no framework lock-in, matches the consuming site's own "no build step" philosophy |
 | Web framework | Express 5 | Small read-only API surface; didn't need more |
 | Database | PostgreSQL (Supabase, managed), accessed via `pg` | Hosts here (Railway) can have ephemeral filesystems — no local disk persistence, ever |
-| AI / LLM | Google Gemini (`gemini-flash-latest`), raw REST — no SDK | Full control over retry/timeout/cost behaviour; one fewer opaque dependency |
+| AI / LLM | DeepSeek (`deepseek-chat`), raw REST — no SDK | Full control over retry/timeout/cost behaviour; one fewer opaque dependency |
 | Real-time data | `ws` (WebSocket client) → aisstream.io | Free-tier live AIS ship positions, entirely optional/gracefully-absent without a key |
 | Source data | GDELT 2.0 Event Export (public, key-free) | The actual global-events firehose this service tames |
 | Security | `helmet`, `express-rate-limit`, `compression` | Standard hardening for a public read API |
@@ -108,12 +108,12 @@ dependency on GDELT, on an LLM, or on this service being up at all.
 
 The site this feeds is a stateless, must-never-go-down marketing site. This
 service is the opposite: it holds state (Postgres), makes outbound calls to
-three different third parties (GDELT, Gemini, aisstream.io), and does
+three different third parties (GDELT, DeepSeek, aisstream.io), and does
 real background work on a poll loop. Coupling those into one deployment
 means a GDELT format change, an LLM outage, or a memory leak in the poll
 loop can take the marketing site down with it. Splitting them means:
 
-- The site never calls GDELT, Gemini, or aisstream.io directly — it calls
+- The site never calls GDELT, DeepSeek, or aisstream.io directly — it calls
   *this service's* read API, server-side, and treats "down/slow/empty" as
   one normal, handled state (`/live` always returns `200`, degrading to a
   clean "temporarily unavailable" panel).
@@ -134,7 +134,7 @@ lib/enrich/      the AI pipeline — category.js (fixed enum validation),
                  geo/date bucketing), pipeline.js (enrichEvent: relevance →
                  classify → severity → summarise; drops rather than
                  half-enriches on any failure)
-lib/llm/         geminiClient.js (thin REST wrapper, no SDK) +
+lib/llm/         deepseekClient.js (thin REST wrapper, no SDK) +
                  withResilience.js (timeout + retry wrapper for every call)
 lib/store/       repository-pattern event store — MemoryEventStore (tests +
                  local-dev fallback) and PostgresEventStore (production)
@@ -178,7 +178,7 @@ always present and finite, `id` is a stable string. Internal-only fields
 ## Enrichment pipeline
 
 `enrichEvent(rawEvent, { llmCall })` — the `llmCall` dependency is injected,
-so production wires in `geminiClient`, tests wire in a fake, and neither
+so production wires in `deepseekClient`, tests wire in a fake, and neither
 touches the other. Order: **relevance filter** (drop below threshold) →
 **category classify** (drop if outside the fixed enum) → **severity score**
 (AI proposal, floored per category so a human-reviewable minimum always
@@ -198,10 +198,10 @@ playbook.
 ```bash
 npm test        # 87 tests, node:test, zero live network calls
 npm run eval     # precision/recall against a hand-labelled fixture set
-                 # (skips cleanly without GEMINI_API_KEY; reportable, not a gate)
+                 # (skips cleanly without DEEPSEEK_API_KEY; reportable, not a gate)
 ```
 
-Every external boundary — GDELT's HTTP fetch, the unzip step, Gemini's
+Every external boundary — GDELT's HTTP fetch, the unzip step, DeepSeek's
 REST call, the AIS WebSocket, wall-clock time — is dependency-injected, so
 the full suite runs deterministically offline. CI runs the suite across
 Node 18/20/22 on every push/PR.
@@ -221,10 +221,10 @@ not a guess.
 | Variable | Required? | Notes |
 | --- | --- | --- |
 | `DATABASE_URL` | Recommended | Managed Postgres. Without it, MIS runs on an in-memory store — fine for local dev, but every restart loses all data. |
-| `GEMINI_API_KEY` | Required for enrichment | Free tier at [Google AI Studio](https://aistudio.google.com). Without it, raw events ingest but nothing gets enriched. |
+| `DEEPSEEK_API_KEY` | Required for enrichment | [platform.deepseek.com](https://platform.deepseek.com). Without it, raw events ingest but nothing gets enriched. |
 | `LLM_MONTHLY_COST_CEILING_USD` | Optional | Defaults to $5. |
 | `AISSTREAM_API_KEY` | Optional | Free tier at [aisstream.io](https://aisstream.io). Only gates live ship positions. |
-| `GDELT_POLL_INTERVAL_MINUTES` | Optional | Defaults set in code (15 min). |
+| `GDELT_POLL_INTERVAL_MINUTES` | Optional | Defaults set in code (60 min). |
 | `PORT` | Optional | Defaults to 3000. |
 
 Nothing here is ever shared with the consuming site, and the site's own
@@ -236,7 +236,7 @@ plain public URL, set as one env var on the site's host.
 
 ```bash
 npm install
-cp .env.example .env    # fill in DATABASE_URL / GEMINI_API_KEY as needed
+cp .env.example .env    # fill in DATABASE_URL / DEEPSEEK_API_KEY as needed
 npm test
 npm run dev              # node --watch, boots the poll loop + read API
 ```

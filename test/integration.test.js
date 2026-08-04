@@ -31,7 +31,7 @@ function fakeFetch() {
   };
 }
 
-// Deterministic stand-in for Gemini: every fixture event is relevant,
+// Deterministic stand-in for DeepSeek: every fixture event is relevant,
 // labor, severity 4, with a fixed neutral summary.
 async function fakeLlmCall(prompt) {
   if (prompt.startsWith('Is the following')) return '0.9';

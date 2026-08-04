@@ -49,16 +49,16 @@ $Y ceiling` in the logs (see `lib/costMonitor.js`, wired into `server.js`'s
 
 **Note:** this is a rough estimate (flat cost-per-call, not real token
 billing) meant as a tripwire, not an exact figure — check your actual
-Gemini billing dashboard for the real number.
+DeepSeek billing dashboard for the real number.
 
 **Fix:**
 1. Check `GDELT_POLL_INTERVAL_MINUTES` — polling too frequently multiplies
-   LLM calls linearly. 15 minutes is the default; widening it is the
-   fastest lever.
+   LLM calls linearly. 60 minutes is the default; widening it further is
+   the fastest lever.
 2. Check whether GDELT's raw event volume spiked (a major global news day
    means more candidate events reach the relevance filter, each still
    costing one LLM call even when rejected as irrelevant).
-3. As a last resort, unset `GEMINI_API_KEY` to stop enrichment entirely
+3. As a last resort, unset `DEEPSEEK_API_KEY` to stop enrichment entirely
    (ingest keeps running, `/api/v1/disruptions` just stops growing) while
    you investigate.
 4. Raise or lower `LLM_MONTHLY_COST_CEILING_USD` once you've decided what's
