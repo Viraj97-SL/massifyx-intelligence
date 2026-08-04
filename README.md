@@ -18,6 +18,13 @@ curl https://massifyx-intelligence-production.up.railway.app/api/v1/disruptions
 
 *Real response from the production API above — genuine GDELT-sourced, AI-enriched events, not a mock.*
 
+## Related MassifyX Services
+
+| Service | Repo | Role |
+|---|---|---|
+| 🌐 Site | [`MassifyX_Global`](https://github.com/Viraj97-SL/MassifyX_Global) | Public site this service's `/live` disruption monitor and `/insights/sweden-trade` page are powered by |
+| 🕵️ War Room | [`massifyx-warroom`](https://github.com/Viraj97-SL/massifyx-warroom) *(private)* | LangGraph deep-agent investigation service — the other decoupled MassifyX microservice |
+
 ---
 
 ## What this is
