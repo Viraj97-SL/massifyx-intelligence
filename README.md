@@ -14,6 +14,10 @@ Powers the `/live` disruption monitor on [MassifyX Global](https://github.com/Vi
 curl https://massifyx-intelligence-production.up.railway.app/api/v1/disruptions
 ```
 
+![Live API response](docs/img/api-response.jpg)
+
+*Real response from the production API above — genuine GDELT-sourced, AI-enriched events, not a mock.*
+
 ---
 
 ## What this is
