@@ -34,7 +34,7 @@ in `lib/gdelt/parseEvents.js` (hardcoded column indices, `FIELD` constant)
 will silently misparse or `pickExportUrl` in `lib/gdelt/ingest.js` will throw.
 
 **Fix:**
-1. Manually fetch `http://data.gdeltproject.org/gdeltv2/lastupdate.txt` and
+1. Manually fetch `https://data.gdeltproject.org/gdeltv2/lastupdate.txt` and
    compare against what `pickExportUrl` expects.
 2. Download a fresh export CSV, diff its column count/order against the
    `FIELD` map in `lib/gdelt/parseEvents.js`.

@@ -20,7 +20,7 @@ const gdeltFixtureText = fs.readFileSync(
 );
 
 const LASTUPDATE_BODY =
-  '1 abc123 http://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip';
+  '1 abc123 https://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip';
 
 function fakeFetch() {
   return async (url) => {
