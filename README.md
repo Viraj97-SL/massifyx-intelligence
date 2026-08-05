@@ -6,17 +6,18 @@ disruptions — with a live AIS ship-tracking layer, a cost-monitored LLM
 enrichment pipeline, and zero runtime dependency on anything that can take
 the consuming site down with it.**
 
-🔗 **Live**: https://massifyx-intelligence-production.up.railway.app/api/v1/health
 Powers the `/live` disruption monitor on [MassifyX Global](https://github.com/Viraj97-SL/MassifyX_Global)
-(see it in context on that site's `/live` and `/insights/sweden-trade` pages).
+(see it in context on that site's `/live` and `/insights/sweden-trade` pages) — the site talks to this
+service server-side only; its real deployment address is never exposed to a browser or published here,
+by design (see `lib/misClient.js`'s docstring).
 
 ```bash
-curl https://massifyx-intelligence-production.up.railway.app/api/v1/disruptions
+curl https://your-mis-deployment.example.com/api/v1/disruptions
 ```
 
 ![Live API response](docs/img/api-response.jpg)
 
-*Real response from the production API above — genuine GDELT-sourced, AI-enriched events, not a mock.*
+*A real response shape from the deployed API — genuine GDELT-sourced, AI-enriched events, not a mock.*
 
 ## Related MassifyX Services
 
