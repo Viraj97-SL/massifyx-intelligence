@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 
-const { startAisStream, MIN_RECONNECT_DELAY_MS } = require('../lib/ais/reconnectingAisStream');
+const { startAisStream, MIN_RECONNECT_DELAY_MS, MAX_RECONNECT_DELAY_MS } = require('../lib/ais/reconnectingAisStream');
 
 class FakeWebSocket extends EventEmitter {
   constructor(url) {
@@ -127,4 +127,52 @@ test('a successful open resets the backoff delay', () => {
 
   created[0].emit('close'); // delay #1 recorded, no open in between
   assert.equal(delays[0], MIN_RECONNECT_DELAY_MS);
+});
+
+// Resilience case: a real outage isn't just one disconnect, it's many in a
+// row with the remote end never coming back up long enough for 'open' to
+// fire. Confirms the exponential backoff actually stops growing at
+// MAX_RECONNECT_DELAY_MS instead of climbing indefinitely (which would
+// eventually schedule a reconnect so far in the future it looks like the
+// stream gave up entirely).
+test('repeated disconnects with no successful open in between cap the delay at MAX_RECONNECT_DELAY_MS', () => {
+  const created = [];
+  const WebSocketImpl = class extends FakeWebSocket {
+    constructor(url) {
+      super(url);
+      created.push(this);
+    }
+  };
+  const delays = [];
+  const pending = [];
+  const timers = {
+    setTimeoutImpl(fn, ms) {
+      delays.push(ms);
+      const entry = { fn, cancelled: false };
+      pending.push(entry);
+      return entry;
+    },
+    clearTimeoutImpl(entry) {
+      entry.cancelled = true;
+    },
+  };
+
+  startAisStream({
+    apiKey: 'k',
+    onVessel: () => {},
+    WebSocketImpl,
+    setTimeoutImpl: timers.setTimeoutImpl,
+    clearTimeoutImpl: timers.clearTimeoutImpl,
+  });
+
+  // Well past the number of doublings needed to hit the cap from
+  // MIN_RECONNECT_DELAY_MS (1s -> 2 -> 4 -> 8 -> 16 -> 30, capped).
+  for (let i = 0; i < 10; i += 1) {
+    created[created.length - 1].emit('close');
+    const next = pending.pop();
+    next.fn();
+  }
+
+  assert.equal(Math.max(...delays), MAX_RECONNECT_DELAY_MS);
+  assert.equal(delays[delays.length - 1], MAX_RECONNECT_DELAY_MS, 'the delay must stay capped, not keep growing');
 });

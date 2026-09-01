@@ -143,3 +143,52 @@ test('fetchRecentEvents refuses to fetch an export URL that fails the allow-list
     /host\/scheme allow-list/,
   );
 });
+
+// Regression test (2026-09 audit): unlike every LLM call (lib/llm/withResilience.js),
+// the GDELT fetches here previously had no timeout at all -- a stalled
+// connection (server accepts the socket but never responds) would hang
+// pollOnce() forever. That's a resource leak on its own, and combined with
+// lib/scheduler.js's poll loop, a hang past one poll interval used to let a
+// second overlapping ingest cycle start on top of the stuck one. fetchImpl
+// here returns a promise that never settles, standing in for that stall;
+// fetchTimeoutMs is passed small so the test doesn't wait for the real 30s
+// default.
+test('fetchRecentEvents rejects instead of hanging forever when the export fetch stalls', async () => {
+  const fetchImpl = async (url) => {
+    if (url.endsWith('lastupdate.txt')) {
+      return { ok: true, text: async () => LASTUPDATE_BODY };
+    }
+    return new Promise(() => {}); // never resolves -- simulates a stalled connection
+  };
+  await assert.rejects(
+    fetchRecentEvents({ fetchImpl, unzipImpl: async () => '', fetchTimeoutMs: 20 }),
+    /timed out after 20ms/,
+  );
+});
+
+test('fetchRecentEvents rejects instead of hanging forever when lastupdate.txt itself stalls', async () => {
+  const fetchImpl = async () => new Promise(() => {}); // never resolves
+  await assert.rejects(
+    fetchRecentEvents({ fetchImpl, unzipImpl: async () => '', fetchTimeoutMs: 20 }),
+    /timed out after 20ms/,
+  );
+});
+
+// Resilience case: a corrupted/truncated download or a broken unzip
+// implementation handing back noise instead of the expected tab-separated
+// CSV. parseGdeltEventExport (lib/gdelt/parseEvents.js) already drops any
+// line with too few columns -- this proves that end-to-end through
+// fetchRecentEvents, i.e. garbage in yields an empty, safely-ignorable
+// result rather than a thrown exception that would crash a poll cycle.
+test('fetchRecentEvents returns an empty list, not a crash, when unzipImpl returns non-CSV garbage', async () => {
+  const fetchImpl = async (url) => {
+    if (url.endsWith('lastupdate.txt')) {
+      return { ok: true, text: async () => LASTUPDATE_BODY };
+    }
+    return { ok: true, arrayBuffer: async () => Buffer.from('irrelevant') };
+  };
+  const unzipImpl = async () => '### not a valid tab-separated GDELT export row at all ###';
+
+  const events = await fetchRecentEvents({ fetchImpl, unzipImpl });
+  assert.deepEqual(events, []);
+});

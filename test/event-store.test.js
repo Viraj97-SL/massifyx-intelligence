@@ -116,3 +116,52 @@ test('listAll returns events sorted by most recently updated first', async () =>
   const all = await store.listAll();
   assert.deepEqual(all.map((e) => e.id), ['second', 'first']);
 });
+
+// Resilience case: two overlapping upsertEvents() calls (e.g. from two
+// overlapping poll cycles -- see lib/scheduler.js's overlap-guard fix)
+// racing on the very same clusterKey id. upsertEvents() itself has no
+// `await` inside its per-event loop, so within a single JS process neither
+// call can actually interleave mid-iteration -- but this test pins that
+// invariant down explicitly (Promise.all, not a sequential await) rather
+// than leaving it as an implicit assumption a future refactor could break
+// silently.
+test('two concurrent upsertEvents calls racing on the same id both apply cleanly (no lost update)', async () => {
+  const store = new MemoryEventStore();
+
+  await Promise.all([
+    store.upsertEvents([sampleEvent({ id: 'evt_race', rawRefs: ['a'] })]),
+    store.upsertEvents([sampleEvent({ id: 'evt_race', rawRefs: ['b'] })]),
+  ]);
+
+  const all = await store.listAll();
+  assert.equal(all.length, 1, 'a race on the same id must still collapse to one event, not two');
+  assert.deepEqual(all[0].rawRefs.sort(), ['a', 'b'], 'both refs must survive -- neither call\'s write may be lost');
+});
+
+// Resilience case: pruneOlderThan's behavior/complexity at scale, without
+// needing a real large fixture file -- reaches into the store's own Map
+// directly to backdate half the entries, since there's no public API for
+// setting lastUpdatedAt to an arbitrary past value.
+test('pruneOlderThan correctly partitions a large number of events by cutoff', async () => {
+  const store = new MemoryEventStore();
+  const now = Date.now();
+  const total = 2000;
+
+  for (let i = 0; i < total; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await store.upsertEvents([sampleEvent({ id: `evt_${i}` })]);
+  }
+
+  let i = 0;
+  for (const [id, event] of store.events) {
+    if (i % 2 === 0) {
+      store.events.set(id, { ...event, lastUpdatedAt: new Date(now - 30 * 24 * 60 * 60 * 1000) });
+    }
+    i += 1;
+  }
+
+  const { pruned } = await store.pruneOlderThan(new Date(now - 14 * 24 * 60 * 60 * 1000));
+
+  assert.equal(pruned, total / 2);
+  assert.equal(await store.countAll(), total / 2);
+});
