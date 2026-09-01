@@ -9,6 +9,7 @@
     "lon": 4.14,
     "location": "Rotterdam, Zuid-Holland, Netherlands",
     "sourceCount": 12,
+    "eventDate": "2026-07-30",
     "firstSeenAt": "2026-07-30T06:02:00.000Z",
     "lastUpdatedAt": "2026-07-30T08:55:00.000Z",
     "sourceUrl": "https://example.com/rotterdam-storm-port-congestion"
@@ -23,6 +24,7 @@
     "lon": 32.5498,
     "location": "Suez, Al Suways, Egypt",
     "sourceCount": 22,
+    "eventDate": "2026-07-29",
     "firstSeenAt": "2026-07-29T14:10:00.000Z",
     "lastUpdatedAt": "2026-07-30T07:40:00.000Z",
     "sourceUrl": "https://example.com/suez-canal-transit-restricted"
@@ -37,6 +39,7 @@
     "lon": 8.6821,
     "location": "Frankfurt, Hesse, Germany",
     "sourceCount": 14,
+    "eventDate": "2026-07-30",
     "firstSeenAt": "2026-07-30T05:00:00.000Z",
     "lastUpdatedAt": "2026-07-30T09:05:00.000Z",
     "sourceUrl": "https://example.com/germany-rail-strike-freight"

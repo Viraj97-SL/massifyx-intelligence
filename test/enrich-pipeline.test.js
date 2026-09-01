@@ -52,6 +52,64 @@ test('happy path: relevant event is fully enriched', async () => {
     'Dockworkers in Rotterdam began a strike affecting container throughput.',
   );
   assert.ok(event.id.startsWith('evt_'));
+  assert.equal(event.eventDate, '2026-07-28');
+});
+
+test('the ML relevance pre-filter vetoes obvious noise before any LLM call runs', async () => {
+  let llmCallCount = 0;
+  const llmCall = async () => {
+    llmCallCount += 1;
+    return '0.9';
+  };
+
+  const event = await enrichEvent(
+    rawEvent({
+      actor1: 'LOCAL FILM FESTIVAL',
+      actor2: 'CELEBRITY GUESTS',
+      location: 'Cannes, France',
+      numMentions: 18,
+      numSources: 6,
+    }),
+    { llmCall },
+  );
+
+  assert.equal(event, null);
+  assert.equal(llmCallCount, 0);
+});
+
+test('a marginally-relevant, high-attention story has its severity capped by the regressor rather than trusting the LLM outright', async () => {
+  // Same "viral-but-trivial" shape as test/fixtures/severity-eval-sample.json's
+  // restaurant-fire example: high mentions/sources, low real disruption
+  // magnitude. Relevance is scripted at 0.7 -- above RELEVANCE_THRESHOLD
+  // (0.65) so the event isn't dropped outright, but below blendSeverity's
+  // RELEVANCE_TRUST_THRESHOLD (0.75), which is exactly the gap this test
+  // exercises: the LLM alone would rate this a 5.
+  const llmCall = scriptedLlmCall([
+    '0.7',
+    'other',
+    '5',
+    'A fire damaged a local restaurant in Nashville, drawing heavy media attention but no supply-chain impact.',
+  ]);
+
+  const event = await enrichEvent(
+    rawEvent({
+      actor1: 'LOCAL RESTAURANT',
+      actor2: 'NEIGHBORHOOD FIRE DEPARTMENT',
+      location: 'Nashville, Tennessee, United States',
+      numMentions: 140,
+      numSources: 38,
+      numArticles: 65,
+      goldsteinScale: -2,
+      avgTone: -6,
+    }),
+    { llmCall },
+  );
+
+  assert.ok(event);
+  assert.ok(
+    event.severity < 5,
+    `expected the regressor to cap severity below the LLM's raw 5, got ${event.severity}`,
+  );
 });
 
 test('below-threshold relevance drops the event before any further calls', async () => {

@@ -1,0 +1,402 @@
+[
+  {
+    "category": "weather",
+    "severity": 1,
+    "event": {
+      "actor1": "LOCAL WEATHER STATION",
+      "actor2": "REGIONAL DISTRIBUTION CENTER",
+      "location": "Des Moines, Iowa, United States",
+      "numMentions": 5,
+      "numSources": 2,
+      "numArticles": 2,
+      "goldsteinScale": 0,
+      "avgTone": -1
+    }
+  },
+  {
+    "category": "weather",
+    "severity": 3,
+    "event": {
+      "actor1": "MIDWEST RAIL OPERATOR",
+      "actor2": "GRAIN SHIPPERS",
+      "location": "St. Louis, Missouri, United States",
+      "numMentions": 20,
+      "numSources": 7,
+      "numArticles": 10,
+      "goldsteinScale": -3,
+      "avgTone": -4
+    }
+  },
+  {
+    "category": "weather",
+    "severity": 5,
+    "event": {
+      "actor1": "US NATIONAL WEATHER SERVICE",
+      "actor2": "GULF COAST SHIPPING",
+      "location": "Houston, Texas, United States",
+      "numMentions": 95,
+      "numSources": 30,
+      "numArticles": 50,
+      "goldsteinScale": -6,
+      "avgTone": -7
+    }
+  },
+  {
+    "category": "weather",
+    "severity": 1,
+    "event": {
+      "actor1": "REGIONAL NEWS OUTLET",
+      "actor2": "DISTRIBUTION CENTER PARKING LOT",
+      "location": "Amarillo, Texas, United States",
+      "numMentions": 150,
+      "numSources": 40,
+      "numArticles": 70,
+      "goldsteinScale": -1,
+      "avgTone": -6
+    },
+    "notes": "viral-but-trivial: dramatic hailstorm photos went viral on social media, but only cosmetic damage to a parking lot -- no operational disruption. Tests that the regressor doesn't just chase numMentions/numSources."
+  },
+  {
+    "category": "geopolitical",
+    "severity": 2,
+    "event": {
+      "actor1": "MINISTRY OF TRADE",
+      "actor2": "FOREIGN EMBASSY",
+      "location": "Brasilia, Distrito Federal, Brazil",
+      "numMentions": 15,
+      "numSources": 6,
+      "numArticles": 8,
+      "goldsteinScale": -2,
+      "avgTone": -3
+    }
+  },
+  {
+    "category": "geopolitical",
+    "severity": 4,
+    "event": {
+      "actor1": "UNITED STATES GOVERNMENT",
+      "actor2": "MAJOR EXPORTER NATION",
+      "location": "Washington, D.C., United States",
+      "numMentions": 70,
+      "numSources": 25,
+      "numArticles": 40,
+      "goldsteinScale": -5,
+      "avgTone": -5
+    }
+  },
+  {
+    "category": "geopolitical",
+    "severity": 5,
+    "event": {
+      "actor1": "RED SEA NAVAL FORCE",
+      "actor2": "CARGO SHIPPING LINE",
+      "location": "Bab-el-Mandeb Strait, Yemen",
+      "numMentions": 110,
+      "numSources": 35,
+      "numArticles": 60,
+      "goldsteinScale": -8,
+      "avgTone": -8
+    }
+  },
+  {
+    "category": "geopolitical",
+    "severity": 5,
+    "event": {
+      "actor1": "BORDER MILITARY COMMAND",
+      "actor2": "RARE-EARTH MINERAL EXPORTERS",
+      "location": "Border crossing, remote frontier region",
+      "numMentions": 8,
+      "numSources": 3,
+      "numArticles": 4,
+      "goldsteinScale": -7,
+      "avgTone": -6
+    },
+    "notes": "quiet-but-serious: a critical, low-population-density border crossing used for rare-earth exports was closed by the military, but the remote location meant almost no press pickup. Tests that low attention doesn't get mistaken for low severity."
+  },
+  {
+    "category": "labor",
+    "severity": 1,
+    "event": {
+      "actor1": "WAREHOUSE STAFF ASSOCIATION",
+      "actor2": "SINGLE DISTRIBUTION CENTER",
+      "location": "Fresno, California, United States",
+      "numMentions": 6,
+      "numSources": 2,
+      "numArticles": 3,
+      "goldsteinScale": -1,
+      "avgTone": -2
+    }
+  },
+  {
+    "category": "labor",
+    "severity": 3,
+    "event": {
+      "actor1": "REGIONAL TRUCKERS UNION",
+      "actor2": "FREIGHT CARRIERS",
+      "location": "Memphis, Tennessee, United States",
+      "numMentions": 25,
+      "numSources": 9,
+      "numArticles": 14,
+      "goldsteinScale": -3,
+      "avgTone": -4
+    }
+  },
+  {
+    "category": "labor",
+    "severity": 5,
+    "event": {
+      "actor1": "ROTTERDAM PORT AUTHORITY",
+      "actor2": "DOCKWORKERS UNION",
+      "location": "Rotterdam, Zuid-Holland, Netherlands",
+      "numMentions": 130,
+      "numSources": 42,
+      "numArticles": 80,
+      "goldsteinScale": -6,
+      "avgTone": -6
+    }
+  },
+  {
+    "category": "labor",
+    "severity": 1,
+    "event": {
+      "actor1": "SINGLE RETAIL STORE EMPLOYEE",
+      "actor2": "COFFEE SHOP CHAIN",
+      "location": "Portland, Oregon, United States",
+      "numMentions": 200,
+      "numSources": 55,
+      "numArticles": 90,
+      "goldsteinScale": -2,
+      "avgTone": -5
+    },
+    "notes": "viral-but-trivial: a single-store labor dispute went viral on social video, huge mention/source counts, zero actual supply-chain footprint (one store, no network effect)."
+  },
+  {
+    "category": "logistics",
+    "severity": 2,
+    "event": {
+      "actor1": "SHORTLINE RAILROAD",
+      "actor2": "LOCAL FREIGHT CUSTOMERS",
+      "location": "Topeka, Kansas, United States",
+      "numMentions": 10,
+      "numSources": 4,
+      "numArticles": 5,
+      "goldsteinScale": -1,
+      "avgTone": -2
+    }
+  },
+  {
+    "category": "logistics",
+    "severity": 3,
+    "event": {
+      "actor1": "STATE HIGHWAY AUTHORITY",
+      "actor2": "FREIGHT HAULERS",
+      "location": "Denver, Colorado, United States",
+      "numMentions": 22,
+      "numSources": 8,
+      "numArticles": 12,
+      "goldsteinScale": -2,
+      "avgTone": -3
+    }
+  },
+  {
+    "category": "logistics",
+    "severity": 4,
+    "event": {
+      "actor1": "CONTAINER TERMINAL OPERATOR",
+      "actor2": "OCEAN CARRIERS",
+      "location": "Los Angeles, California, United States",
+      "numMentions": 55,
+      "numSources": 18,
+      "numArticles": 30,
+      "goldsteinScale": -3,
+      "avgTone": -4
+    }
+  },
+  {
+    "category": "logistics",
+    "severity": 5,
+    "event": {
+      "actor1": "MOUNTAIN PASS TUNNEL AUTHORITY",
+      "actor2": "MINING REGION HAULERS",
+      "location": "Remote mountain pass, non-English-speaking region",
+      "numMentions": 7,
+      "numSources": 2,
+      "numArticles": 3,
+      "goldsteinScale": -5,
+      "avgTone": -5
+    },
+    "notes": "quiet-but-serious: the only overland route to a mining region collapsed, cutting off all ground freight, but minimal international press coverage of a remote non-English-language region."
+  },
+  {
+    "category": "regulatory",
+    "severity": 1,
+    "event": {
+      "actor1": "CUSTOMS AGENCY",
+      "actor2": "IMPORT BROKERS",
+      "location": "Ottawa, Ontario, Canada",
+      "numMentions": 8,
+      "numSources": 3,
+      "numArticles": 4,
+      "goldsteinScale": 0,
+      "avgTone": 0
+    }
+  },
+  {
+    "category": "regulatory",
+    "severity": 3,
+    "event": {
+      "actor1": "TRADE MINISTRY",
+      "actor2": "MID-TIER IMPORTERS",
+      "location": "Canberra, Australian Capital Territory, Australia",
+      "numMentions": 30,
+      "numSources": 10,
+      "numArticles": 16,
+      "goldsteinScale": -2,
+      "avgTone": -2
+    }
+  },
+  {
+    "category": "regulatory",
+    "severity": 5,
+    "event": {
+      "actor1": "UNITED STATES GOVERNMENT",
+      "actor2": "SEMICONDUCTOR EXPORTERS",
+      "location": "Washington, D.C., United States",
+      "numMentions": 85,
+      "numSources": 28,
+      "numArticles": 45,
+      "goldsteinScale": -6,
+      "avgTone": -5
+    }
+  },
+  {
+    "category": "regulatory",
+    "severity": 1,
+    "event": {
+      "actor1": "APPEALS COURT",
+      "actor2": "CELEBRITY ANTITRUST DEFENDANT",
+      "location": "Los Angeles, California, United States",
+      "numMentions": 170,
+      "numSources": 48,
+      "numArticles": 75,
+      "goldsteinScale": -1,
+      "avgTone": -4
+    },
+    "notes": "viral-but-trivial: a celebrity court case got tagged 'regulatory' by keyword overlap and went viral, but has no commercial supply-chain relevance."
+  },
+  {
+    "category": "supplier",
+    "severity": 2,
+    "event": {
+      "actor1": "SECONDARY COMPONENT SUPPLIER",
+      "actor2": "CONSUMER ELECTRONICS BRAND",
+      "location": "Guadalajara, Jalisco, Mexico",
+      "numMentions": 9,
+      "numSources": 3,
+      "numArticles": 4,
+      "goldsteinScale": -1,
+      "avgTone": -2
+    }
+  },
+  {
+    "category": "supplier",
+    "severity": 3,
+    "event": {
+      "actor1": "MID-TIER PARTS SUPPLIER",
+      "actor2": "AUTOMOTIVE MANUFACTURERS",
+      "location": "Stuttgart, Baden-Wurttemberg, Germany",
+      "numMentions": 28,
+      "numSources": 9,
+      "numArticles": 15,
+      "goldsteinScale": -2,
+      "avgTone": -3
+    }
+  },
+  {
+    "category": "supplier",
+    "severity": 5,
+    "event": {
+      "actor1": "TAIWAN SEMICONDUCTOR SUPPLIER",
+      "actor2": "AUTOMOTIVE MANUFACTURERS",
+      "location": "Hsinchu, Taiwan",
+      "numMentions": 60,
+      "numSources": 20,
+      "numArticles": 35,
+      "goldsteinScale": -5,
+      "avgTone": -6
+    }
+  },
+  {
+    "category": "supplier",
+    "severity": 5,
+    "event": {
+      "actor1": "SOLE-SOURCE PRECISION COMPONENT MAKER",
+      "actor2": "AEROSPACE MANUFACTURERS",
+      "location": "Small rural town, unspecified region",
+      "numMentions": 4,
+      "numSources": 1,
+      "numArticles": 2,
+      "goldsteinScale": -3,
+      "avgTone": -3
+    },
+    "notes": "quiet-but-serious: a tiny sole-source specialty parts maker shut down abruptly, but it is so small and obscure that almost no press covered it, despite real single-point-of-failure exposure for its buyers."
+  },
+  {
+    "category": "other",
+    "severity": 1,
+    "event": {
+      "actor1": "LOCAL RESTAURANT",
+      "actor2": "NEIGHBORHOOD FIRE DEPARTMENT",
+      "location": "Nashville, Tennessee, United States",
+      "numMentions": 140,
+      "numSources": 38,
+      "numArticles": 65,
+      "goldsteinScale": -2,
+      "avgTone": -6
+    },
+    "notes": "viral-but-trivial: a dramatic restaurant fire video went viral; no supply-chain relevance whatsoever despite huge attention."
+  },
+  {
+    "category": "other",
+    "severity": 2,
+    "event": {
+      "actor1": "COMMUNITY FESTIVAL ORGANIZERS",
+      "actor2": "LOCAL VENDORS",
+      "location": "Austin, Texas, United States",
+      "numMentions": 12,
+      "numSources": 4,
+      "numArticles": 6,
+      "goldsteinScale": 0,
+      "avgTone": -1
+    }
+  },
+  {
+    "category": "other",
+    "severity": 1,
+    "event": {
+      "actor1": "CELEBRITY GOSSIP SUBJECT",
+      "actor2": "TABLOID MEDIA",
+      "location": "Cannes, France",
+      "numMentions": 95,
+      "numSources": 27,
+      "numArticles": 40,
+      "goldsteinScale": 0,
+      "avgTone": -1
+    },
+    "notes": "viral-but-trivial: pure celebrity gossip, no commercial relevance, but high attention volume."
+  },
+  {
+    "category": "other",
+    "severity": 3,
+    "event": {
+      "actor1": "REGIONAL CHAMBER OF COMMERCE",
+      "actor2": "SMALL BUSINESS COALITION",
+      "location": "Manchester, England, United Kingdom",
+      "numMentions": 18,
+      "numSources": 6,
+      "numArticles": 9,
+      "goldsteinScale": -2,
+      "avgTone": -2
+    }
+  }
+]
