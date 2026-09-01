@@ -17,6 +17,23 @@ const DEFAULT_POLL_MINUTES = 60;
 const DEFAULT_PORT = 3001;
 const VESSEL_PRUNE_INTERVAL_MS = 60_000;
 
+// Bug fix (2026-09 audit): `Number(process.env.PORT) || DEFAULT_PORT` looks
+// right but treats an explicit PORT=0 as falsy and silently falls back to
+// DEFAULT_PORT -- port 0 is a real, meaningful request ("ask the OS for any
+// free ephemeral port"), used by test/smoke.test.js to boot a real server
+// without a fixed/colliding port number. `||` can't distinguish "not set" /
+// "not a number" from "explicitly zero"; Number.isFinite can. An unset or
+// blank PORT (undefined, or accidentally left as `PORT=` in an .env file)
+// still falls back to defaultPort, same as before this fix -- only a
+// genuinely-provided value of "0" is treated as intentional.
+function resolvePort(envValue, defaultPort) {
+  if (envValue === undefined || envValue === null || String(envValue).trim() === '') {
+    return defaultPort;
+  }
+  const parsed = Number(envValue);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultPort;
+}
+
 function createLlmCall(apiKey) {
   return (prompt) => withResilience(() => callDeepSeek({ apiKey, prompt, fetchImpl: fetch }));
 }
@@ -111,12 +128,20 @@ async function main() {
   }
 
   const app = createApp({ store, getHealthInfo: () => health, vesselStore });
-  const port = Number(process.env.PORT) || DEFAULT_PORT;
-  app.listen(port, () => {
-    console.log(`[MIS] read API listening on http://localhost:${port}`);
+  const port = resolvePort(process.env.PORT, DEFAULT_PORT);
+  // Captured (rather than left as an unreferenced app.listen() return value)
+  // and awaited until 'listening' actually fires -- test/smoke.test.js needs
+  // a real handle to read back the bound port (PORT=0 picks an ephemeral
+  // one) and to close it cleanly afterward, and any future graceful-shutdown
+  // code would need the same handle.
+  const server = await new Promise((resolve) => {
+    const httpServer = app.listen(port, () => {
+      console.log(`[MIS] read API listening on http://localhost:${port}`);
+      resolve(httpServer);
+    });
   });
 
-  return { store, poller, app, aisStream };
+  return { store, poller, app, server, aisStream };
 }
 
 if (require.main === module) {
@@ -126,4 +151,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { pollOnce, main };
+module.exports = { pollOnce, main, resolvePort };

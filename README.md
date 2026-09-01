@@ -81,7 +81,7 @@ dependency on GDELT, on an LLM, or on this service being up at all.
   streaming (`aisstream.io`), with reconnect-with-backoff and an in-memory
   store that prunes stale positions itself (10 min) rather than growing
   unbounded.
-- **Testing discipline** — 87 tests (`node:test`, no external test runner),
+- **Testing discipline** — 149 tests (`node:test`, no external test runner),
   every network/filesystem/time boundary is dependency-injected
   (`fetchImpl`, `unzipImpl`, `WebSocketImpl`, `llmCall`) specifically so the
   suite runs deterministically with zero real network calls. A separate,
@@ -111,7 +111,7 @@ dependency on GDELT, on an LLM, or on this service being up at all.
 | Real-time data | `ws` (WebSocket client) → aisstream.io | Free-tier live AIS ship positions, entirely optional/gracefully-absent without a key |
 | Source data | GDELT 2.0 Event Export (public, key-free) | The actual global-events firehose this service tames |
 | Security | `helmet`, `express-rate-limit`, `compression` | Standard hardening for a public read API |
-| Testing | `node:test` (built-in), zero external test framework | 87 tests, all fixture-based, zero live network calls |
+| Testing | `node:test` (built-in), zero external test framework | 149 tests, all fixture-based, zero live network calls |
 | CI | GitHub Actions, Node 18/20/22 matrix | Tests gate the build; the AI eval reports but doesn't gate (LLM output isn't binary pass/fail) |
 | Hosting | Railway | Auto-detected Node build (Nixpacks), env-var config, zero Dockerfile |
 | Database hosting | Supabase | Managed Postgres, free tier, accessed through its Supavisor pooler for IPv4 reachability |
@@ -208,7 +208,7 @@ playbook.
 ## Testing
 
 ```bash
-npm test        # 87 tests, node:test, zero live network calls
+npm test        # 149 tests, node:test, zero live network calls
 npm run eval     # precision/recall against a hand-labelled fixture set
                  # (skips cleanly without DEEPSEEK_API_KEY; reportable, not a gate)
 ```

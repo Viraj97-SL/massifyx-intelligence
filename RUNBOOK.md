@@ -127,6 +127,64 @@ the new case — grow those fixtures and retrain
 (`scripts/train-relevance-classifier.js`, `scripts/train-severity-
 regressor.js`) rather than hand-tuning thresholds blind.
 
+## Poll loop hangs or runs on top of itself
+
+**Symptom:** ingest cycles logged back-to-back closer together than
+`GDELT_POLL_INTERVAL_MINUTES`, `[MIS] poll tick skipped: previous cycle is
+still running` appearing in logs, doubled-looking LLM spend for the same
+GDELT window, or the read API getting slow/erroring under
+`PostgresEventStore` (a sign of Postgres pool exhaustion from multiple
+in-flight `upsertEvents` transactions).
+
+**Root causes fixed 2026-09:**
+
+1. `lib/gdelt/ingest.js`'s two GDELT fetches had no timeout at all — every
+   LLM call already went through `withResilience`'s timeout+retry (see
+   `lib/llm/withResilience.js`), but a stalled GDELT connection (socket
+   accepted, response never finishes) could hang `pollOnce()` indefinitely.
+   Fixed by wrapping each fetch/body-read in `withTimeout` (default 30s,
+   injectable via `fetchTimeoutMs` for tests).
+2. `lib/scheduler.js`'s `createPoller` fired on every `setInterval` tick
+   regardless of whether the previous tick's task had finished — a poll
+   cycle that legitimately outlasts the interval (many candidate events,
+   each up to 4 sequential LLM calls) or a hung fetch (see above) could
+   start a second, overlapping `pollOnce()`. Fixed by tracking an in-flight
+   flag and skipping (with a logged warning) any tick that arrives while the
+   previous one is still running, rather than letting them stack.
+
+If you see the skip warning occasionally on a heavy news day, that's the fix
+working as intended, not a new problem — it means a poll cycle is taking
+longer than the configured interval; consider widening
+`GDELT_POLL_INTERVAL_MINUTES` if it happens often. If you see it on *every*
+tick, something is actually stuck (check for a GDELT outage or a DeepSeek
+outage keeping `withResilience` in its retry loop) and needs the "MIS is
+down" / "GDELT changed format" playbooks above.
+
+## Known low-priority findings (2026-09 audit)
+
+Documented rather than fixed — none of these are demonstrated to cause
+real user-visible harm today, per this repo's own convention of not fixing
+things speculatively. Revisit if one of them actually manifests:
+
+- **README/`.env.example` PORT default is stale.** Both say "Optional —
+  defaults to 3000", but `server.js`'s actual `DEFAULT_PORT` is `3001` (and
+  `.env.example` itself even sets `PORT=3001`, contradicting its own
+  comment). Cosmetic — Railway always sets a real `PORT` env var in
+  production — but worth fixing next time either file is touched.
+- **`withTimeout` (`lib/llm/withResilience.js`) doesn't cancel the
+  underlying operation on timeout**, only stops waiting for it. A DeepSeek
+  call or GDELT fetch that times out keeps its socket/request running in the
+  background until it eventually settles on its own; with `lib/gdelt/
+  ingest.js`'s new fetch timeout and `lib/scheduler.js`'s overlap guard this
+  no longer compounds into overlapping poll cycles, but it's still a minor
+  resource inefficiency. Would need `AbortController` threaded through
+  `fetchImpl`/`callDeepSeek`, which is more invasive than the fixes above.
+- **`lib/enrich/clusterKey.js`'s `bucketDate` doesn't validate its `sqlDate`
+  input.** A GDELT row with an empty/malformed `SQLDATE` produces a bucket
+  from `Number('')` (`0`) rather than throwing — in practice GDELT always
+  populates this field, so this has never been observed, but it's not
+  defensively checked either.
+
 ## Rollback
 
 MIS and the site deploy and roll back independently (DESIGN.md §2's whole
