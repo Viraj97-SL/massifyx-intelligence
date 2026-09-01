@@ -27,6 +27,18 @@ test('pickExportUrl throws when no export line is present', () => {
   assert.throws(() => pickExportUrl('nothing here'), /No export CSV URL/);
 });
 
+// Regression test for a real production incident (2026-09): GDELT's real
+// lastupdate.txt lists the export URL as plain http://, not https://, even
+// though the identical path is also served over https on the same host.
+// assertExpectedExportUrl requires https, so every real ingestion attempt
+// was failing until pickExportUrl started upgrading the scheme itself.
+test('pickExportUrl upgrades a real-world http:// listing to https://', () => {
+  const body = 'wc12345 abc123 http://data.gdeltproject.org/gdeltv2/20260901111500.export.CSV.zip';
+  const url = pickExportUrl(body);
+  assert.equal(url, 'https://data.gdeltproject.org/gdeltv2/20260901111500.export.CSV.zip');
+  assert.doesNotThrow(() => assertExpectedExportUrl(url));
+});
+
 test('fetchRecentEvents never touches the network — fetch/unzip are fully injected', async () => {
   const calledUrls = [];
   const fetchImpl = async (url) => {
@@ -42,6 +54,32 @@ test('fetchRecentEvents never touches the network — fetch/unzip are fully inje
 
   assert.equal(events.length, 2);
   assert.equal(calledUrls[0], 'https://data.gdeltproject.org/gdeltv2/lastupdate.txt');
+  assert.equal(
+    calledUrls[1],
+    'https://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip',
+  );
+});
+
+test('fetchRecentEvents succeeds end-to-end when lastupdate.txt lists the export over plain http', async () => {
+  const httpBody = LASTUPDATE_BODY.replace(
+    'https://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip',
+    'http://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip',
+  );
+  const calledUrls = [];
+  const fetchImpl = async (url) => {
+    calledUrls.push(url);
+    if (url.endsWith('lastupdate.txt')) {
+      return { ok: true, text: async () => httpBody };
+    }
+    return { ok: true, arrayBuffer: async () => Buffer.from('fake-zip-bytes') };
+  };
+  const unzipImpl = async () => fixtureText;
+
+  const events = await fetchRecentEvents({ fetchImpl, unzipImpl });
+
+  assert.equal(events.length, 2);
+  // The actual second fetch always happens over https, regardless of the
+  // scheme lastupdate.txt declared.
   assert.equal(
     calledUrls[1],
     'https://data.gdeltproject.org/gdeltv2/20260728123000.export.CSV.zip',
