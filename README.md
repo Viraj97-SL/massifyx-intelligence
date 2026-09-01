@@ -1,4 +1,4 @@
-# MassifyX Intelligence Service (MIS)
+# Norvenzia Intelligence Service (MIS)
 
 **A decoupled AI microservice that turns the raw GDELT global-events feed into a
 rate-limited, contract-tested API of classified, scored supply-chain
@@ -6,7 +6,7 @@ disruptions — with a live AIS ship-tracking layer, a cost-monitored LLM
 enrichment pipeline, and zero runtime dependency on anything that can take
 the consuming site down with it.**
 
-Powers the `/live` disruption monitor on [MassifyX Global](https://github.com/Viraj97-SL/MassifyX_Global)
+Powers the `/live` disruption monitor on [Norvenzia](https://github.com/Viraj97-SL/MassifyX_Global)
 (see it in context on that site's `/live` and `/insights/sweden-trade` pages) — the site talks to this
 service server-side only; its real deployment address is never exposed to a browser or published here,
 by design (see `lib/misClient.js`'s docstring).
@@ -19,12 +19,12 @@ curl https://your-mis-deployment.example.com/api/v1/disruptions
 
 *A real response shape from the deployed API — genuine GDELT-sourced, AI-enriched events, not a mock.*
 
-## Related MassifyX Services
+## Related Norvenzia Services
 
 | Service | Repo | Role |
 |---|---|---|
 | 🌐 Site | [`MassifyX_Global`](https://github.com/Viraj97-SL/MassifyX_Global) | Public site this service's `/live` disruption monitor and `/insights/sweden-trade` page are powered by |
-| 🕵️ War Room | [`massifyx-warroom`](https://github.com/Viraj97-SL/massifyx-warroom) *(private)* | LangGraph deep-agent investigation service — the other decoupled MassifyX microservice |
+| 🕵️ War Room | [`massifyx-warroom`](https://github.com/Viraj97-SL/massifyx-warroom) *(private)* | LangGraph deep-agent investigation service — the other decoupled Norvenzia microservice |
 
 ---
 
