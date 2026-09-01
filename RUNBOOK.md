@@ -41,6 +41,17 @@ will silently misparse or `pickExportUrl` in `lib/gdelt/ingest.js` will throw.
 3. Update the fixture at `test/fixtures/gdelt-sample-export.csv` to match
    the new real format, update `FIELD`, re-run `npm test` until green.
 
+**Known instance of this (2026-09):** GDELT's real `lastupdate.txt` lists the
+export URL as plain `http://`, not `https://`, even though the identical
+path is also served over `https` on the same host. `assertExpectedExportUrl`
+requires `https:`, so every real ingestion attempt failed with "GDELT export
+URL failed the host/scheme allow-list" until `pickExportUrl` started
+upgrading the scheme itself before validating (`lib/gdelt/ingest.js`). If
+this guard starts rejecting again, check whether GDELT's declared scheme
+changed again before assuming the host allow-list itself needs loosening —
+the point of upgrading to https ourselves is to never have to trust
+whatever scheme the feed happens to claim.
+
 ## Cost spike
 
 **Symptom:** `[MIS] COST ALERT: estimated spend this month is $X, over the
