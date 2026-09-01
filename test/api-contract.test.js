@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 
-const { createApp } = require('../lib/api/createApp');
+const { createApp, PUBLIC_FIELDS } = require('../lib/api/createApp');
 const { MemoryEventStore } = require('../lib/store/memoryEventStore');
 const { assertValidDisruptionEvent } = require('../lib/api/contractRules');
 
@@ -64,11 +64,11 @@ test('GET /api/v1/disruptions matches the documented shape and every event satis
   assert.deepEqual(Object.keys(body).sort(), ['count', 'events', 'generatedAt']);
   assert.equal(body.count, fixtureEvents.length);
 
-  const expectedFields = [
-    'id', 'title', 'summary', 'category', 'severity',
-    'lat', 'lon', 'location', 'sourceCount',
-    'firstSeenAt', 'lastUpdatedAt', 'sourceUrl',
-  ].sort();
+  // Sourced from createApp.js's own PUBLIC_FIELDS rather than duplicated
+  // here by hand -- a hand-copied list is exactly how the eventDate field
+  // could silently go unverified (see contractRules.js's shape check for
+  // the same reasoning applied to values, not just the key set).
+  const expectedFields = [...PUBLIC_FIELDS].sort();
 
   for (const event of body.events) {
     assertValidDisruptionEvent(event);

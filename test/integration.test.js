@@ -37,7 +37,7 @@ async function fakeLlmCall(prompt) {
   if (prompt.startsWith('Is the following')) return '0.9';
   if (prompt.startsWith('Classify')) return 'labor';
   if (prompt.startsWith('Rate the severity')) return '4';
-  return 'A disruption was reported affecting regional supply chains.';
+  return 'Port Authority workers went on strike, halting container operations for several days.';
 }
 
 let server;
@@ -78,7 +78,7 @@ test('enriched events carry the fake classifier/severity/summary through to the 
   for (const event of body.events) {
     assert.equal(event.category, 'labor');
     assert.equal(event.severity, 4);
-    assert.equal(event.summary, 'A disruption was reported affecting regional supply chains.');
+    assert.equal(event.summary, 'Port Authority workers went on strike, halting container operations for several days.');
     assert.ok(Number.isFinite(event.lat));
     assert.ok(Number.isFinite(event.lon));
   }

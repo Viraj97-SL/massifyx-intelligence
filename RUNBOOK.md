@@ -64,6 +64,58 @@ DeepSeek billing dashboard for the real number.
 4. Raise or lower `LLM_MONTHLY_COST_CEILING_USD` once you've decided what's
    actually acceptable.
 
+## Live feed data quality (irrelevant/vacuous/mismatched/stale entries)
+
+**Symptom:** `/live` on the site shows entries with no real supply-chain
+relevance, summaries that assert nothing concrete, a source link that
+doesn't match the headline, old (weeks/months-old) events presented as
+"recent", or severity 4-5 on plainly trivial events.
+
+**Root causes fixed 2026-09** (see the git history around this section for
+the actual diffs):
+
+1. **Irrelevant/vacuous entries** — the relevance/severity/summary prompts
+   in `lib/enrich/pipeline.js` used to give the model only actor names +
+   location, with no description of what actually happened. Fixed by
+   passing the CAMEO event-code description (`lib/enrich/cameoCodes.js`),
+   Goldstein scale, and average tone through to every prompt, raising
+   `RELEVANCE_THRESHOLD`, and adding a vacuous-summary gate
+   (`isObviouslyVacuous`). `lib/ml/relevanceClassifier.js` and
+   `lib/ml/summaryGroundedness.js` add a cheap pre-filter / specificity check
+   on top of the LLM calls.
+2. **Source doesn't match the headline** — `lib/enrich/clusterKey.js`'s
+   geo/date bucketing was coarse enough (0.5°/3 days, no actor signal) that
+   two unrelated stories in the same region/category/week collided onto the
+   same id, and `lib/store/postgresEventStore.js`'s upsert kept the first
+   insert's `source_url` forever while overwriting title/summary with
+   whichever story landed next. Fixed by tightening the buckets, keying on
+   the lead actor, and adding `source_url` to the `ON CONFLICT` update.
+3. **Old events shown as recent** — `eventDate` (GDELT's real event date) was
+   parsed but never persisted; `lastUpdatedAt` was also being bumped to
+   `now()` on every poll cycle even when nothing about the event actually
+   changed, which is how a re-emitted old story kept sorting to the top of
+   "recent". Fixed by persisting/exposing `eventDate` and only advancing
+   `lastUpdatedAt` when real content changed. The consuming site
+   (`MassifyX_Global`) still needs its own change to actually sort/label
+   `/live` by `eventDate` rather than `lastUpdatedAt` — that's tracked in
+   that repo, not here.
+4. **Severity 4-5 on trivial events** — the severity prompt got
+   `numMentions`/`numSources` but no real content, so a viral-but-irrelevant
+   story could score high purely from attention volume. Fixed by
+   `lib/ml/severityRegressor.js`'s `blendSeverity`: once relevance is below
+   0.75 ("marginal", not confidently on-topic), the result is capped at
+   `max(regressor's prediction, category floor)` instead of trusting the
+   LLM+floor pipeline outright — a marginal-relevance, high-mention story
+   can only reach 4-5 if a model trained on real disruption magnitude (not
+   attention volume) also thinks it's serious.
+
+If `/live` still shows one of these symptoms after this fix, it's most
+likely the ML modules' tiny hand-labelled training sets (`test/fixtures/
+eval-sample.json`, `test/fixtures/severity-eval-sample.json`) not covering
+the new case — grow those fixtures and retrain
+(`scripts/train-relevance-classifier.js`, `scripts/train-severity-
+regressor.js`) rather than hand-tuning thresholds blind.
+
 ## Rollback
 
 MIS and the site deploy and roll back independently (DESIGN.md §2's whole

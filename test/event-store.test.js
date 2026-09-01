@@ -48,17 +48,33 @@ test('upsertEvents unions rawRefs across upserts instead of overwriting them', a
   assert.deepEqual(event.rawRefs.sort(), ['1001127001', '1001127009']);
 });
 
-test('upsertEvents preserves firstSeenAt across updates but bumps lastUpdatedAt', async () => {
+test('upsertEvents preserves firstSeenAt across updates but bumps lastUpdatedAt on a real content change', async () => {
   const store = new MemoryEventStore();
   await store.upsertEvents([sampleEvent()]);
+  const [firstPass] = await store.listAll();
+
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  await store.upsertEvents([sampleEvent({ severity: 5 })]);
+  const [secondPass] = await store.listAll();
+
+  assert.equal(secondPass.firstSeenAt.getTime(), firstPass.firstSeenAt.getTime());
+  assert.ok(secondPass.lastUpdatedAt.getTime() > firstPass.lastUpdatedAt.getTime());
+});
+
+test('upsertEvents does NOT bump lastUpdatedAt when only sourceCount drifts', async () => {
+  // A still-covered story naturally accumulates more mentions/sources over
+  // time regardless of whether it's a brand-new incident or a months-old
+  // one -- that alone must not make an old event look "recently updated".
+  const store = new MemoryEventStore();
+  await store.upsertEvents([sampleEvent({ sourceCount: 12 })]);
   const [firstPass] = await store.listAll();
 
   await new Promise((resolve) => setTimeout(resolve, 5));
   await store.upsertEvents([sampleEvent({ sourceCount: 99 })]);
   const [secondPass] = await store.listAll();
 
-  assert.equal(secondPass.firstSeenAt.getTime(), firstPass.firstSeenAt.getTime());
-  assert.ok(secondPass.lastUpdatedAt.getTime() > firstPass.lastUpdatedAt.getTime());
+  assert.equal(secondPass.sourceCount, 99);
+  assert.equal(secondPass.lastUpdatedAt.getTime(), firstPass.lastUpdatedAt.getTime());
 });
 
 test('pruneOlderThan removes only events last updated before the cutoff', async () => {
